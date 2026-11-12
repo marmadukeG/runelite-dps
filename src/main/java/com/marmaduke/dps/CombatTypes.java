@@ -1,0 +1,35 @@
+package com.marmaduke.dps;
+
+enum CombatStyle
+{
+	MELEE,
+	RANGED,
+	MAGIC
+}
+
+enum AttackStance
+{
+	MELEE_ACCURATE,
+	MELEE_AGGRESSIVE,
+	MELEE_CONTROLLED,
+	MELEE_DEFENSIVE,
+	RANGED_ACCURATE,
+	RANGED_RAPID,
+	RANGED_LONG,
+	MAGIC_ACCURATE,
+	MAGIC_DEFENSIVE
+}
+
+enum MeleeStyle
+{
+	STAB,
+	SLASH,
+	CRUSH
+}
+
+enum RangedStyle
+{
+	LIGHT,
+	STANDARD,
+	HEAVY
+}
