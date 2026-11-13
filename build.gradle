@@ -19,7 +19,7 @@ repositories {
 	mavenCentral()
 }
 
-def runeLiteVersion = 'latest.release'
+def runeLiteVersion = '1.13.6'
 
 // The published client POM depends on every LWJGL native classifier. Gradle then
 // tries to fetch all of them, including ones that do not match this machine.
@@ -83,6 +83,7 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 test {
+	dependsOn tasks.named('jar')
 	testLogging {
 		events 'passed', 'failed', 'skipped'
 		exceptionFormat 'full'

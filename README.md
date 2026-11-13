@@ -14,12 +14,22 @@ Requirements: JDK 11 or newer.
 ./gradlew build
 ```
 
-The jar is `build/libs/runelite-dps-1.0.0.jar`. Copy it into the sideload folder:
+The jar is `build/libs/runelite-dps-1.0.0.jar`. It is a plain jar: `com/marmaduke/dps/DpsPlugin.class` sits at the jar root, the class extends `Plugin`, and `@PluginDescriptor(name = "Check DPS")` is visible at runtime. It is compiled against RuneLite client 1.13.6. Copy it into the sideload folder:
 
 - Linux and macOS: `~/.runelite/sideloaded-plugins`
 - Windows: `%USERPROFILE%\.runelite\sideloaded-plugins`
 
-Start the official RuneLite client with `--developer-mode`. In the Jagex Launcher, put that flag in the RuneLite extra arguments. Open the plugin list, enable **Check DPS**, then use the right-click option on an NPC.
+RuneLite 1.13.6 only scans that folder when developer mode is actually on. Developer mode is `--developer-mode` **and** no launcher version. Launcher 2.6.10 sets the `runelite.launcher.version` system property, so a client started from the Jagex Launcher or RuneLite.exe keeps developer mode off even when the startup log shows `args: --developer-mode`. In that case `loadSideLoadPlugins` returns immediately, the log never says "Side-loading plugin", and hub plugins still load through `ExternalPluginManager`.
+
+Start the client jar yourself, with assertions, so the launcher property is absent:
+
+```text
+java -ea -jar RuneLite.jar --developer-mode
+```
+
+The launcher stores that jar under `%USERPROFILE%\.runelite\repository2\` (on Windows) or `~/.runelite/repository2/`. Without `-ea`, 1.13.6 stops at "Developers should enable assertions" and never loads plugins.
+
+In the plugin list, search for **Check DPS**.
 
 Plugin settings (group `checkdps`) move the overlay and toggle the stat breakdown. **On slayer task** turns on the black mask and slayer helmet bonus, which the client cannot see on its own. Salve, void, and the other worn-gear bonuses are detected from equipment.
 
