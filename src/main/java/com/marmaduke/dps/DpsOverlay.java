@@ -6,7 +6,6 @@ import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.Shape;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import javax.inject.Inject;
@@ -21,7 +20,6 @@ class DpsOverlay extends OverlayPanel
 	private static final Color DPS_COLOR = new Color(255, 180, 40);
 	private static final Color NOTE_COLOR = Color.ORANGE;
 	private static final Color MUTED = new Color(160, 160, 160);
-	private static final int COLUMN_GAP = 8;
 	private static final String UNPIN_HINT = "Right-click overlay to unpin";
 
 	private final DpsPlugin plugin;
@@ -56,11 +54,9 @@ class DpsOverlay extends OverlayPanel
 		panelComponent.getChildren().clear();
 
 		boolean numbersOnly = estimate.note != null && !estimate.note.isEmpty() && estimate.attackSpeedTicks == 0;
-		List<String[]> rows = numbersOnly
-			? new ArrayList<String[]>()
-			: fullRows(estimate, config.showBreakdown());
+		String statsLine = numbersOnly ? "" : fullLine(estimate, config.showBreakdown());
 		String note = estimate.note == null ? "" : estimate.note;
-		int innerWidth = contentWidth(metrics, rows, note, UNPIN_HINT);
+		int innerWidth = contentWidth(metrics, statsLine, note, UNPIN_HINT);
 		Dimension userSize = getPreferredSize();
 		if (userSize != null && userSize.width > innerWidth + ComponentConstants.STANDARD_BORDER * 2)
 		{
@@ -87,13 +83,7 @@ class DpsOverlay extends OverlayPanel
 		}
 		else
 		{
-			for (int i = 0; i < rows.size(); i++)
-			{
-				String[] row = rows.get(i);
-				Color leftColor = "Defence".equals(row[0]) ? Color.LIGHT_GRAY : Color.WHITE;
-				Color rightColor = "DPS".equals(row[0]) ? DPS_COLOR : leftColor;
-				addLine(row[0], row[1], leftColor, rightColor);
-			}
+			addLine(statsLine, "", Color.WHITE, Color.WHITE);
 			if (!note.isEmpty())
 			{
 				addLine(note, "", NOTE_COLOR, NOTE_COLOR);
@@ -117,36 +107,31 @@ class DpsOverlay extends OverlayPanel
 	}
 
 	/**
-	 * One full-overlay row per stat. Each entry is {label, value}. The value is never shortened.
+	 * Every full-overlay stat on one line. Max hit is the full integer.
 	 */
-	static List<String[]> fullRows(DpsEstimate estimate, boolean breakdown)
+	static String fullLine(DpsEstimate estimate, boolean breakdown)
 	{
-		List<String[]> rows = new ArrayList<String[]>();
-		rows.add(new String[] {"DPS", String.format(Locale.US, "%.2f", estimate.dps)});
+		StringBuilder line = new StringBuilder();
+		line.append("DPS ").append(String.format(Locale.US, "%.2f", estimate.dps));
 		if (breakdown)
 		{
-			rows.add(new String[] {"Max hit", Integer.toString(estimate.maxHit)});
-			rows.add(new String[] {
-				"Hit chance",
-				String.format(Locale.US, "%.1f%%", estimate.accuracy * 100.0)
-			});
+			line.append("   Max hit ").append(estimate.maxHit);
+			line.append("   Hit chance ").append(String.format(Locale.US, "%.1f%%", estimate.accuracy * 100.0));
 		}
 		if (estimate.defenceLabel != null && !estimate.defenceLabel.isEmpty())
 		{
-			rows.add(new String[] {"Defence", estimate.defenceLabel});
+			line.append("   ").append(estimate.defenceLabel);
 		}
 		if (breakdown)
 		{
-			rows.add(new String[] {
-				"Attack speed",
-				String.format(Locale.US, "%.1fs", estimate.attackSpeedTicks * 0.6)
-			});
-			rows.add(new String[] {
-				"Stance",
-				estimate.styleLabel == null ? "" : estimate.styleLabel
-			});
+			line.append("   ").append(String.format(Locale.US, "%.1fs", estimate.attackSpeedTicks * 0.6));
+			String stance = estimate.styleLabel == null ? "" : estimate.styleLabel;
+			if (!stance.isEmpty())
+			{
+				line.append("   ").append(stance);
+			}
 		}
-		return rows;
+		return line.toString();
 	}
 
 	private Dimension renderMinimal(Graphics2D graphics, DpsEstimate estimate)
@@ -198,16 +183,12 @@ class DpsOverlay extends OverlayPanel
 		panelComponent.getChildren().add(builder.build());
 	}
 
-	static int contentWidth(FontMetrics metrics, List<String[]> rows, String note, String hint)
+	static int contentWidth(FontMetrics metrics, String statsLine, String note, String hint)
 	{
 		int width = 0;
-		for (int i = 0; i < rows.size(); i++)
+		if (statsLine != null && !statsLine.isEmpty())
 		{
-			String[] row = rows.get(i);
-			int left = metrics.stringWidth(row[0] == null ? "" : row[0]);
-			int right = row.length > 1 && row[1] != null ? metrics.stringWidth(row[1]) : 0;
-			int gap = right > 0 ? COLUMN_GAP : 0;
-			width = Math.max(width, left + right + gap);
+			width = Math.max(width, metrics.stringWidth(statsLine));
 		}
 		if (note != null && !note.isEmpty())
 		{
