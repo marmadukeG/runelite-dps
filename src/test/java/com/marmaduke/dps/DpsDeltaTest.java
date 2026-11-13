@@ -77,6 +77,16 @@ public class DpsDeltaTest
 	}
 
 	@Test
+	public void prayerHoverLabelMapsToThePrayer()
+	{
+		assertEquals(Prayer.RIGOUR, DpsTooltipOverlay.prayerFromLabel("Rigour"));
+		assertEquals(Prayer.RIGOUR, DpsTooltipOverlay.prayerFromLabel("<col=ff981f>Rigour</col>"));
+		assertEquals(Prayer.RIGOUR, DpsTooltipOverlay.prayerFromLabel("Level 74<br>Rigour<br>Increases ranged"));
+		assertEquals(Prayer.PROTECT_FROM_MAGIC, DpsTooltipOverlay.prayerFromLabel("Protect from Magic"));
+		assertNull(DpsTooltipOverlay.prayerFromLabel("Cancel"));
+	}
+
+	@Test
 	public void weaponsAndFoodAreNotPotions()
 	{
 		assertFalse(PotionBoosts.affectsCombat("Twisted bow"));

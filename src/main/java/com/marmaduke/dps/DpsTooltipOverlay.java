@@ -3,6 +3,7 @@ package com.marmaduke.dps;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -12,6 +13,8 @@ import net.runelite.api.EnumComposition;
 import net.runelite.api.EnumID;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.MenuEntry;
+import net.runelite.api.ParamID;
+import net.runelite.api.Point;
 import net.runelite.api.Prayer;
 import net.runelite.api.Skill;
 import net.runelite.api.gameval.InterfaceID;
@@ -23,6 +26,7 @@ import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.tooltip.Tooltip;
 import net.runelite.client.ui.overlay.tooltip.TooltipManager;
 import net.runelite.client.util.ColorUtil;
+import net.runelite.client.util.Text;
 
 /**
  * Hover tooltip for the prayer book, quick prayers, and combat potions.
@@ -61,18 +65,14 @@ class DpsTooltipOverlay extends Overlay
 			return null;
 		}
 		MenuEntry[] menu = client.getMenuEntries();
-		if (menu.length == 0)
-		{
-			return null;
-		}
-		Widget widget = menu[menu.length - 1].getWidget();
-		if (widget == null)
-		{
-			return null;
-		}
+		Widget widget = menu.length == 0 ? null : menu[menu.length - 1].getWidget();
 
 		String text = null;
-		Prayer prayer = prayerAt(widget);
+		Prayer prayer = prayerUnderMouse();
+		if (prayer == null)
+		{
+			prayer = prayerFromMenu(menu);
+		}
 		if (prayer != null)
 		{
 			if (prayer.name().startsWith("RP_"))
@@ -89,7 +89,7 @@ class DpsTooltipOverlay extends Overlay
 				}
 			}
 		}
-		else
+		else if (widget != null)
 		{
 			String itemName = potionAt(widget);
 			if (itemName != null)
@@ -115,14 +115,24 @@ class DpsTooltipOverlay extends Overlay
 		return null;
 	}
 
-	private Prayer prayerAt(Widget widget)
+	/**
+	 * Prayer icons do not put the prayer widget on the menu the way a potion puts its item there.
+	 * Hit-test the prayer book and the quick-prayer buttons under the cursor instead.
+	 */
+	private Prayer prayerUnderMouse()
 	{
-		int book = client.getVarbitValue(VarbitID.PRAYERBOOK);
-		EnumComposition prayers = client.getEnum(book == 1 ? EnumID.PRAYERS_RUINOUS : EnumID.PRAYERS_NORMAL);
+		Point mouse = client.getMouseCanvasPosition();
+		if (mouse == null)
+		{
+			return null;
+		}
+		EnumComposition prayers = prayerBook();
 		if (prayers == null)
 		{
 			return null;
 		}
+		int x = mouse.getX();
+		int y = mouse.getY();
 		int[] keys = prayers.getKeys();
 		for (int i = 0; i < keys.length; i++)
 		{
@@ -131,18 +141,25 @@ class DpsTooltipOverlay extends Overlay
 			{
 				continue;
 			}
-			int component = definition.getIntValue(net.runelite.api.ParamID.OC_PRAYER_COMPONENT);
-			if (component > 0 && widgetChain(widget, component))
+			int component = definition.getIntValue(ParamID.OC_PRAYER_COMPONENT);
+			Widget widget = component > 0 ? client.getWidget(component) : null;
+			if (widget != null && containsMouse(widget, x, y, 0))
 			{
-				return PRAYERS.get(definition.getName().toLowerCase(Locale.US));
+				Prayer prayer = prayerFromWidget(definition, widget);
+				if (prayer != null)
+				{
+					return prayer;
+				}
+				return prayerFromBookText();
 			}
 		}
-		if (WidgetUtil.componentToInterface(widget.getId()) != InterfaceID.QUICKPRAYER)
-		{
-			return null;
-		}
+		return quickPrayerUnderMouse(prayers, x, y);
+	}
+
+	private Prayer quickPrayerUnderMouse(EnumComposition prayers, int x, int y)
+	{
 		Widget buttons = client.getWidget(InterfaceID.Quickprayer.BUTTONS);
-		if (buttons == null)
+		if (buttons == null || buttons.isHidden())
 		{
 			return null;
 		}
@@ -151,21 +168,180 @@ class DpsTooltipOverlay extends Overlay
 		{
 			return null;
 		}
+		int[] keys = prayers.getKeys();
 		for (int i = 0; i < keys.length; i++)
 		{
 			int key = keys[i];
-			if (key < 0 || key >= children.length || !widgetChain(widget, children[key].getId()))
+			if (key < 0 || key >= children.length || !containsMouse(children[key], x, y, 0))
 			{
 				continue;
 			}
 			ItemComposition definition = client.getItemDefinition(prayers.getIntValue(key));
-			if (definition == null || definition.getName() == null)
+			Prayer prayer = prayerFromWidget(definition, children[key]);
+			if (prayer != null)
 			{
-				return null;
+				return prayer;
 			}
-			return PRAYERS.get(definition.getName().toLowerCase(Locale.US));
+		}
+		for (int i = 0; i < children.length; i++)
+		{
+			if (!containsMouse(children[i], x, y, 0))
+			{
+				continue;
+			}
+			Prayer prayer = prayerFromLabel(children[i].getName());
+			if (prayer == null)
+			{
+				prayer = prayerFromLabel(children[i].getText());
+			}
+			if (prayer != null)
+			{
+				return prayer;
+			}
 		}
 		return null;
+	}
+
+	private Prayer prayerFromMenu(MenuEntry[] menu)
+	{
+		EnumComposition prayers = prayerBook();
+		if (prayers == null || menu == null)
+		{
+			return null;
+		}
+		for (int m = menu.length - 1; m >= 0; m--)
+		{
+			Widget widget = menu[m].getWidget();
+			if (widget == null)
+			{
+				continue;
+			}
+			int[] keys = prayers.getKeys();
+			for (int i = 0; i < keys.length; i++)
+			{
+				ItemComposition definition = client.getItemDefinition(prayers.getIntValue(keys[i]));
+				if (definition == null)
+				{
+					continue;
+				}
+				int component = definition.getIntValue(ParamID.OC_PRAYER_COMPONENT);
+				if (component > 0 && widgetChain(widget, component))
+				{
+					Prayer prayer = prayerFromWidget(definition, widget);
+					if (prayer != null)
+					{
+						return prayer;
+					}
+					return prayerFromBookText();
+				}
+			}
+			if (WidgetUtil.componentToInterface(widget.getId()) == InterfaceID.QUICKPRAYER)
+			{
+				Prayer prayer = prayerFromLabel(widget.getName());
+				if (prayer == null)
+				{
+					prayer = prayerFromLabel(widget.getText());
+				}
+				if (prayer != null)
+				{
+					return prayer;
+				}
+			}
+		}
+		return null;
+	}
+
+	private Prayer prayerFromWidget(ItemComposition definition, Widget widget)
+	{
+		Prayer prayer = definition == null ? null : prayerFromLabel(definition.getName());
+		if (prayer == null && widget != null)
+		{
+			prayer = prayerFromLabel(widget.getName());
+		}
+		if (prayer == null && widget != null)
+		{
+			prayer = prayerFromLabel(widget.getText());
+		}
+		return prayer;
+	}
+
+	private Prayer prayerFromBookText()
+	{
+		Widget info = client.getWidget(InterfaceID.Prayerbook.INFO);
+		Prayer prayer = info == null ? null : prayerFromLabel(info.getText());
+		if (prayer != null)
+		{
+			return prayer;
+		}
+		Widget tooltip = client.getWidget(InterfaceID.Prayerbook.TOOLTIP);
+		return tooltip == null ? null : prayerFromLabel(tooltip.getText());
+	}
+
+	private EnumComposition prayerBook()
+	{
+		int book = client.getVarbitValue(VarbitID.PRAYERBOOK);
+		return client.getEnum(book == 1 ? EnumID.PRAYERS_RUINOUS : EnumID.PRAYERS_NORMAL);
+	}
+
+	static Prayer prayerFromLabel(String raw)
+	{
+		if (raw == null || raw.isEmpty())
+		{
+			return null;
+		}
+		String text = Text.removeTags(raw).toLowerCase(Locale.US).trim();
+		if (text.isEmpty())
+		{
+			return null;
+		}
+		Prayer exact = PRAYERS.get(text);
+		if (exact != null)
+		{
+			return exact;
+		}
+		Prayer best = null;
+		int bestLength = 0;
+		for (Map.Entry<String, Prayer> entry : PRAYERS.entrySet())
+		{
+			if (text.contains(entry.getKey()) && entry.getKey().length() > bestLength)
+			{
+				best = entry.getValue();
+				bestLength = entry.getKey().length();
+			}
+		}
+		return best;
+	}
+
+	private boolean containsMouse(Widget widget, int x, int y, int depth)
+	{
+		if (widget == null || widget.isHidden() || depth > 3)
+		{
+			return false;
+		}
+		Rectangle bounds = widget.getBounds();
+		if (bounds != null && bounds.width > 0 && bounds.height > 0 && bounds.contains(x, y))
+		{
+			return true;
+		}
+		return containsMouse(widget.getDynamicChildren(), x, y, depth)
+			|| containsMouse(widget.getStaticChildren(), x, y, depth)
+			|| containsMouse(widget.getNestedChildren(), x, y, depth);
+	}
+
+	private boolean containsMouse(Widget[] children, int x, int y, int depth)
+	{
+		if (children == null)
+		{
+			return false;
+		}
+		for (int i = 0; i < children.length; i++)
+		{
+			if (containsMouse(children[i], x, y, depth + 1))
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private String potionAt(Widget widget)

@@ -77,7 +77,10 @@ public class DpsPlugin extends Plugin
 
 	private NpcStatsIndex npcStats = NpcStatsIndex.empty();
 	private final Map<Integer, DefenceModel> defenceByIndex = new HashMap<Integer, DefenceModel>();
+	static final int REACTIVE_HOLD_TICKS = 100;
+
 	private Integer targetIndex;
+	private int reactiveIdleTicks;
 	private DpsEstimate estimate;
 	private CombatInput currentInput;
 	private EnumSet<Prayer> currentPrayers = EnumSet.noneOf(Prayer.class);
@@ -140,7 +143,7 @@ public class DpsPlugin extends Plugin
 		{
 			if (config.reactiveMode())
 			{
-				followAttackTarget();
+				followAttackTarget(false);
 			}
 			else
 			{
@@ -194,7 +197,7 @@ public class DpsPlugin extends Plugin
 		{
 			return;
 		}
-		followAttackTarget();
+		followAttackTarget(false);
 	}
 
 	@Subscribe
@@ -223,7 +226,7 @@ public class DpsPlugin extends Plugin
 		resolvePendingSpec(client.getTickCount());
 		if (config.reactiveMode())
 		{
-			followAttackTarget();
+			followAttackTarget(true);
 		}
 		if (targetIndex != null)
 		{
@@ -311,7 +314,7 @@ public class DpsPlugin extends Plugin
 		pendingSpec.hits.add(hitsplat.getAmount());
 	}
 
-	private void followAttackTarget()
+	private void followAttackTarget(boolean advanceIdle)
 	{
 		Player player = client.getLocalPlayer();
 		if (player == null)
@@ -319,16 +322,30 @@ public class DpsPlugin extends Plugin
 			return;
 		}
 		Actor interacting = player.getInteracting();
-		if (!(interacting instanceof NPC) || !isAttackTarget((NPC) interacting))
+		if (interacting instanceof NPC && isAttackTarget((NPC) interacting))
 		{
-			clearTarget();
+			reactiveIdleTicks = 0;
+			NPC npc = (NPC) interacting;
+			if (targetIndex == null || targetIndex.intValue() != npc.getIndex())
+			{
+				selectTarget(npc.getIndex());
+			}
 			return;
 		}
-		NPC npc = (NPC) interacting;
-		if (targetIndex == null || targetIndex.intValue() != npc.getIndex())
+		if (!advanceIdle || targetIndex == null)
 		{
-			selectTarget(npc.getIndex());
+			return;
 		}
+		reactiveIdleTicks++;
+		if (reactiveHoldExpired(reactiveIdleTicks))
+		{
+			clearTarget();
+		}
+	}
+
+	static boolean reactiveHoldExpired(int idleTicks)
+	{
+		return idleTicks >= REACTIVE_HOLD_TICKS;
 	}
 
 	private static boolean isAttackTarget(NPC npc)
@@ -378,6 +395,7 @@ public class DpsPlugin extends Plugin
 		estimate = null;
 		currentInput = null;
 		currentPrayers = EnumSet.noneOf(Prayer.class);
+		reactiveIdleTicks = 0;
 	}
 
 	private void recompute()

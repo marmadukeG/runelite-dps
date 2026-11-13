@@ -33,7 +33,7 @@ The launcher stores that jar under `%USERPROFILE%\.runelite\repository2\` (on Wi
 
 In the plugin list, search for **Check DPS**.
 
-Plugin settings (group `checkdps`) move the overlay and toggle the stat breakdown. **Minimal overlay** (`minimalOverlay`) hides the panel and shows only three numbers, in order: DPS, max hit, and hit chance. **Reactive mode** (`reactiveMode`) drops the pin and shows DPS for the NPC you are attacking, switching when that target changes. **On slayer task** turns on the black mask and slayer helmet bonus, which the client cannot see on its own. Salve, void, and the other worn-gear bonuses are detected from equipment.
+Plugin settings (group `checkdps`) move the overlay and toggle the stat breakdown. **Minimal overlay** (`minimalOverlay`) hides the panel and shows only three numbers, in order: DPS, max hit, and hit chance. **Reactive mode** (`reactiveMode`) drops the pin and shows DPS for the NPC you are attacking, switching when that target changes. Walking away keeps that target up for 60 seconds of not attacking, then hides it. **On slayer task** turns on the black mask and slayer helmet bonus, which the client cannot see on its own. Salve, void, and the other worn-gear bonuses are detected from equipment.
 
 ## What the formula covers
 

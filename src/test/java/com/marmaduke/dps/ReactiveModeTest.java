@@ -14,4 +14,12 @@ public class ReactiveModeTest
 		assertFalse(DpsPlugin.hasAttackAction(new String[] {"Talk-to", "Trade", null}));
 		assertFalse(DpsPlugin.hasAttackAction(null));
 	}
+
+	@Test
+	public void reactiveModeKeepsTheLastTargetForSixtySeconds()
+	{
+		assertFalse(DpsPlugin.reactiveHoldExpired(0));
+		assertFalse(DpsPlugin.reactiveHoldExpired(DpsPlugin.REACTIVE_HOLD_TICKS - 1));
+		assertTrue(DpsPlugin.reactiveHoldExpired(DpsPlugin.REACTIVE_HOLD_TICKS));
+	}
 }
