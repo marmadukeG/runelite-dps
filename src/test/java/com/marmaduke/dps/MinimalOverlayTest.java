@@ -4,6 +4,7 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.util.List;
 import org.junit.Test;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -32,7 +33,7 @@ public class MinimalOverlayTest
 	}
 
 	@Test
-	public void fullOverlayPutsEveryStatOnOneLine()
+	public void fullOverlayKeepsEachStatOnOneLine()
 	{
 		DpsEstimate estimate = new DpsEstimate(
 			"Doom of Mokhaiotl (Delve 1)",
@@ -44,18 +45,27 @@ public class MinimalOverlayTest
 			"Def 120 (vulnerability)",
 			"");
 
-		String line = DpsOverlay.fullLine(estimate, true);
+		List<String[]> rows = DpsOverlay.fullRows(estimate, true);
 
-		assertEquals(
-			"DPS 12.34   Max hit 86   Hit chance 51.2%   Def 120 (vulnerability)   3.0s   Rapid",
-			line);
-		assertFalse(line.contains("(standard)"));
-		assertFalse(line.contains("..."));
-		assertFalse(line.contains("\n"));
+		assertEquals(6, rows.size());
+		assertArrayEquals(new String[] {"DPS", "12.34"}, rows.get(0));
+		assertArrayEquals(new String[] {"Max hit", "86"}, rows.get(1));
+		assertArrayEquals(new String[] {"Hit chance", "51.2%"}, rows.get(2));
+		assertArrayEquals(new String[] {"Defence", "Def 120 (vulnerability)"}, rows.get(3));
+		assertArrayEquals(new String[] {"Attack speed", "3.0s"}, rows.get(4));
+		assertArrayEquals(new String[] {"Stance", "Rapid"}, rows.get(5));
 
 		FontMetrics metrics = metrics();
-		int inner = DpsOverlay.contentWidth(metrics, line, "", "Right-click overlay to unpin");
-		assertTrue(inner >= metrics.stringWidth(line));
+		int inner = DpsOverlay.contentWidth(metrics, rows, "", "Right-click overlay to unpin");
+		for (int i = 0; i < rows.size(); i++)
+		{
+			String[] row = rows.get(i);
+			assertFalse(row[0].contains("(standard)"));
+			assertFalse(row[1].contains("(standard)"));
+			assertFalse(row[1].contains("..."));
+			int needed = metrics.stringWidth(row[0]) + metrics.stringWidth(row[1]);
+			assertTrue(row[0], inner > needed);
+		}
 	}
 
 	private static FontMetrics metrics()
