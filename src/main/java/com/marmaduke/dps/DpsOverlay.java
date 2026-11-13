@@ -44,6 +44,12 @@ class DpsOverlay extends OverlayPanel
 			return null;
 		}
 
+		if (config.minimalOverlay())
+		{
+			panelComponent.getChildren().clear();
+			return renderMinimal(graphics, estimate);
+		}
+
 		int innerWidth = innerWidth();
 		FontMetrics metrics = graphics.getFontMetrics();
 		panelComponent.getChildren().clear();
@@ -107,6 +113,43 @@ class DpsOverlay extends OverlayPanel
 		{
 			graphics.setClip(previousClip);
 		}
+	}
+
+	private Dimension renderMinimal(Graphics2D graphics, DpsEstimate estimate)
+	{
+		FontMetrics metrics = graphics.getFontMetrics();
+		String[] lines = minimalLines(estimate);
+		Color[] colors = new Color[] {DPS_COLOR, Color.WHITE, Color.WHITE};
+		int lineHeight = metrics.getHeight();
+		int width = 1;
+		for (int i = 0; i < lines.length; i++)
+		{
+			width = Math.max(width, metrics.stringWidth(lines[i]) + 1);
+		}
+		int baseline = metrics.getAscent();
+		for (int i = 0; i < lines.length; i++)
+		{
+			drawShadowed(graphics, lines[i], 0, baseline, colors[i]);
+			baseline += lineHeight;
+		}
+		return new Dimension(width, lineHeight * lines.length + 1);
+	}
+
+	static String[] minimalLines(DpsEstimate estimate)
+	{
+		return new String[] {
+			String.format(Locale.US, "%.2f", estimate.dps),
+			Integer.toString(estimate.maxHit),
+			String.format(Locale.US, "%.1f%%", estimate.accuracy * 100.0)
+		};
+	}
+
+	private static void drawShadowed(Graphics2D graphics, String text, int x, int y, Color color)
+	{
+		graphics.setColor(Color.BLACK);
+		graphics.drawString(text, x + 1, y + 1);
+		graphics.setColor(color);
+		graphics.drawString(text, x, y);
 	}
 
 	private void addWrapped(FontMetrics metrics, String text, Color color, int innerWidth)

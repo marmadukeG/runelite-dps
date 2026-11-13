@@ -40,4 +40,15 @@ public interface DpsConfig extends Config
 	{
 		return true;
 	}
+
+	@ConfigItem(
+		keyName = "minimalOverlay",
+		name = "Minimal overlay",
+		description = "Hide the panel and show only three numbers: DPS, max hit, and hit chance",
+		position = 3
+	)
+	default boolean minimalOverlay()
+	{
+		return false;
+	}
 }

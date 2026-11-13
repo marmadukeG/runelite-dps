@@ -31,7 +31,7 @@ The launcher stores that jar under `%USERPROFILE%\.runelite\repository2\` (on Wi
 
 In the plugin list, search for **Check DPS**.
 
-Plugin settings (group `checkdps`) move the overlay and toggle the stat breakdown. **On slayer task** turns on the black mask and slayer helmet bonus, which the client cannot see on its own. Salve, void, and the other worn-gear bonuses are detected from equipment.
+Plugin settings (group `checkdps`) move the overlay and toggle the stat breakdown. **Minimal overlay** (`minimalOverlay`) hides the panel and shows only three numbers, in order: DPS, max hit, and hit chance. **On slayer task** turns on the black mask and slayer helmet bonus, which the client cannot see on its own. Salve, void, and the other worn-gear bonuses are detected from equipment.
 
 ## What the formula covers
 
