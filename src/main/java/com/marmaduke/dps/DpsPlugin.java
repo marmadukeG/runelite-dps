@@ -16,11 +16,13 @@ import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.MenuAction;
 import net.runelite.api.NPC;
+import net.runelite.api.NPCComposition;
 import net.runelite.api.Player;
 import net.runelite.api.Prayer;
 import net.runelite.api.Skill;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
+import net.runelite.api.events.InteractingChanged;
 import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.NpcChanged;
 import net.runelite.api.events.NpcDespawned;
@@ -134,13 +136,24 @@ public class DpsPlugin extends Plugin
 			return;
 		}
 		overlay.setPosition(config.position());
+		if ("reactiveMode".equals(event.getKey()))
+		{
+			if (config.reactiveMode())
+			{
+				followAttackTarget();
+			}
+			else
+			{
+				clearTarget();
+			}
+		}
 		recompute();
 	}
 
 	@Subscribe
 	public void onMenuEntryAdded(MenuEntryAdded event)
 	{
-		if (!"Attack".equals(event.getOption()))
+		if (config.reactiveMode() || !"Attack".equals(event.getOption()))
 		{
 			return;
 		}
@@ -168,10 +181,20 @@ public class DpsPlugin extends Plugin
 	@Subscribe
 	public void onOverlayMenuClicked(OverlayMenuClicked event)
 	{
-		if (event.getOverlay() == overlay && "Clear".equals(event.getEntry().getOption()))
+		if (!config.reactiveMode() && event.getOverlay() == overlay && "Clear".equals(event.getEntry().getOption()))
 		{
 			clearTarget();
 		}
+	}
+
+	@Subscribe
+	public void onInteractingChanged(InteractingChanged event)
+	{
+		if (!config.reactiveMode() || event.getSource() != client.getLocalPlayer())
+		{
+			return;
+		}
+		followAttackTarget();
 	}
 
 	@Subscribe
@@ -198,6 +221,10 @@ public class DpsPlugin extends Plugin
 			}
 		}
 		resolvePendingSpec(client.getTickCount());
+		if (config.reactiveMode())
+		{
+			followAttackTarget();
+		}
 		if (targetIndex != null)
 		{
 			NPC target = findNpc(targetIndex);
@@ -282,6 +309,56 @@ public class DpsPlugin extends Plugin
 			return;
 		}
 		pendingSpec.hits.add(hitsplat.getAmount());
+	}
+
+	private void followAttackTarget()
+	{
+		Player player = client.getLocalPlayer();
+		if (player == null)
+		{
+			return;
+		}
+		Actor interacting = player.getInteracting();
+		if (!(interacting instanceof NPC) || !isAttackTarget((NPC) interacting))
+		{
+			clearTarget();
+			return;
+		}
+		NPC npc = (NPC) interacting;
+		if (targetIndex == null || targetIndex.intValue() != npc.getIndex())
+		{
+			selectTarget(npc.getIndex());
+		}
+	}
+
+	private static boolean isAttackTarget(NPC npc)
+	{
+		if (npc.isDead() || (npc.getHealthScale() > 0 && npc.getHealthRatio() == 0))
+		{
+			return false;
+		}
+		NPCComposition composition = npc.getTransformedComposition();
+		if (composition == null)
+		{
+			composition = npc.getComposition();
+		}
+		return composition != null && hasAttackAction(composition.getActions());
+	}
+
+	static boolean hasAttackAction(String[] actions)
+	{
+		if (actions == null)
+		{
+			return false;
+		}
+		for (int i = 0; i < actions.length; i++)
+		{
+			if ("Attack".equals(actions[i]))
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private void selectTarget(int index)

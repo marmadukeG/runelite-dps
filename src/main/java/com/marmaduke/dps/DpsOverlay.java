@@ -60,7 +60,8 @@ class DpsOverlay extends OverlayPanel
 			? new ArrayList<String[]>()
 			: fullRows(estimate, config.showBreakdown());
 		String note = estimate.note == null ? "" : estimate.note;
-		int innerWidth = contentWidth(metrics, rows, note, UNPIN_HINT);
+		String hint = config.reactiveMode() ? "" : UNPIN_HINT;
+		int innerWidth = contentWidth(metrics, rows, note, hint);
 		Dimension userSize = getPreferredSize();
 		if (userSize != null && userSize.width > innerWidth + ComponentConstants.STANDARD_BORDER * 2)
 		{
@@ -100,7 +101,10 @@ class DpsOverlay extends OverlayPanel
 			}
 		}
 
-		addLine(UNPIN_HINT, "", MUTED, MUTED);
+		if (!hint.isEmpty())
+		{
+			addLine(hint, "", MUTED, MUTED);
+		}
 
 		panelComponent.setPreferredSize(new Dimension(panelWidth, 0));
 		Shape previousClip = graphics.getClip();

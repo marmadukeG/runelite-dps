@@ -51,4 +51,15 @@ public interface DpsConfig extends Config
 	{
 		return false;
 	}
+
+	@ConfigItem(
+		keyName = "reactiveMode",
+		name = "Reactive mode",
+		description = "Show DPS for the NPC you are attacking, and switch when that target changes",
+		position = 4
+	)
+	default boolean reactiveMode()
+	{
+		return false;
+	}
 }
