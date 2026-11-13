@@ -617,21 +617,16 @@ final class CombatMath
 		}
 		if (in.combatStyle == CombatStyle.RANGED)
 		{
-			String ammo;
-			switch (in.rangedStyle)
+			String stance = rangedStanceLabel(in.stance);
+			if (in.rangedStyle == RangedStyle.LIGHT)
 			{
-				case LIGHT:
-					ammo = "light";
-					break;
-				case HEAVY:
-					ammo = "heavy";
-					break;
-				case STANDARD:
-				default:
-					ammo = "standard";
-					break;
+				return stance + " (light)";
 			}
-			return rangedStanceLabel(in.stance) + " (" + ammo + ")";
+			if (in.rangedStyle == RangedStyle.HEAVY)
+			{
+				return stance + " (heavy)";
+			}
+			return stance;
 		}
 		String melee;
 		switch (in.meleeStyle)

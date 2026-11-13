@@ -17,8 +17,10 @@ public class CombatMathTest
 		assertTrue(CombatMath.attackRoll(rapid) < CombatMath.attackRoll(accurate));
 		assertEquals(5, CombatMath.attackSpeed(rapid));
 		assertEquals(6, CombatMath.attackSpeed(accurate));
-		assertEquals("Rapid (standard)", CombatMath.estimate(rapid, "Target", "Def 0").styleLabel);
-		assertEquals("Accurate (standard)", CombatMath.estimate(accurate, "Target", "Def 0").styleLabel);
+		assertEquals("Rapid", CombatMath.estimate(rapid, "Target", "Def 0").styleLabel);
+		assertEquals("Accurate", CombatMath.estimate(accurate, "Target", "Def 0").styleLabel);
+		rapid.rangedStyle = RangedStyle.LIGHT;
+		assertEquals("Rapid (light)", CombatMath.estimate(rapid, "Target", "Def 0").styleLabel);
 	}
 
 	@Test

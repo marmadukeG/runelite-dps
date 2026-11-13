@@ -6,6 +6,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.Shape;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import javax.inject.Inject;
@@ -20,7 +21,8 @@ class DpsOverlay extends OverlayPanel
 	private static final Color DPS_COLOR = new Color(255, 180, 40);
 	private static final Color NOTE_COLOR = Color.ORANGE;
 	private static final Color MUTED = new Color(160, 160, 160);
-	private static final int COLUMN_GAP = 6;
+	private static final int COLUMN_GAP = 8;
+	private static final String UNPIN_HINT = "Right-click overlay to unpin";
 
 	private final DpsPlugin plugin;
 	private final DpsConfig config;
@@ -50,9 +52,21 @@ class DpsOverlay extends OverlayPanel
 			return renderMinimal(graphics, estimate);
 		}
 
-		int innerWidth = innerWidth();
 		FontMetrics metrics = graphics.getFontMetrics();
 		panelComponent.getChildren().clear();
+
+		boolean numbersOnly = estimate.note != null && !estimate.note.isEmpty() && estimate.attackSpeedTicks == 0;
+		List<String[]> rows = numbersOnly
+			? new ArrayList<String[]>()
+			: fullRows(estimate, config.showBreakdown());
+		String note = estimate.note == null ? "" : estimate.note;
+		int innerWidth = contentWidth(metrics, rows, note, UNPIN_HINT);
+		Dimension userSize = getPreferredSize();
+		if (userSize != null && userSize.width > innerWidth + ComponentConstants.STANDARD_BORDER * 2)
+		{
+			innerWidth = userSize.width - ComponentConstants.STANDARD_BORDER * 2;
+		}
+		int panelWidth = innerWidth + ComponentConstants.STANDARD_BORDER * 2;
 
 		List<String> nameLines = OverlayText.wrap(metrics, estimate.targetName, innerWidth);
 		if (nameLines.isEmpty())
@@ -67,52 +81,72 @@ class DpsOverlay extends OverlayPanel
 				.build());
 		}
 
-		if (estimate.note != null && !estimate.note.isEmpty() && estimate.attackSpeedTicks == 0)
+		if (numbersOnly)
 		{
-			addWrapped(metrics, estimate.note, NOTE_COLOR, innerWidth);
+			addLine(note, "", NOTE_COLOR, NOTE_COLOR);
 		}
 		else
 		{
-			addPair(metrics, "DPS", String.format(Locale.US, "%.2f", estimate.dps), Color.WHITE, DPS_COLOR, innerWidth);
-			if (config.showBreakdown())
+			for (int i = 0; i < rows.size(); i++)
 			{
-				addPair(
-					metrics,
-					estimate.styleLabel,
-					"max " + estimate.maxHit,
-					Color.WHITE,
-					Color.WHITE,
-					innerWidth);
-				addPair(
-					metrics,
-					String.format(Locale.US, "%.1f%%", estimate.accuracy * 100.0),
-					String.format(Locale.US, "%.1fs", estimate.attackSpeedTicks * 0.6),
-					Color.WHITE,
-					Color.WHITE,
-					innerWidth);
+				String[] row = rows.get(i);
+				Color leftColor = "Defence".equals(row[0]) ? Color.LIGHT_GRAY : Color.WHITE;
+				Color rightColor = "DPS".equals(row[0]) ? DPS_COLOR : leftColor;
+				addLine(row[0], row[1], leftColor, rightColor);
 			}
-			if (estimate.defenceLabel != null && !estimate.defenceLabel.isEmpty())
+			if (!note.isEmpty())
 			{
-				addWrapped(metrics, estimate.defenceLabel, Color.LIGHT_GRAY, innerWidth);
-			}
-			if (estimate.note != null && !estimate.note.isEmpty())
-			{
-				addWrapped(metrics, estimate.note, NOTE_COLOR, innerWidth);
+				addLine(note, "", NOTE_COLOR, NOTE_COLOR);
 			}
 		}
 
-		addWrapped(metrics, "Right-click overlay to unpin", MUTED, innerWidth);
+		addLine(UNPIN_HINT, "", MUTED, MUTED);
 
+		panelComponent.setPreferredSize(new Dimension(panelWidth, 0));
 		Shape previousClip = graphics.getClip();
-		graphics.clip(new Rectangle(0, -10000, panelWidth(), 20000));
+		graphics.clip(new Rectangle(0, -10000, panelWidth, 20000));
 		try
 		{
-			return super.render(graphics);
+			return panelComponent.render(graphics);
 		}
 		finally
 		{
 			graphics.setClip(previousClip);
+			panelComponent.getChildren().clear();
 		}
+	}
+
+	/**
+	 * One full-overlay row per stat. Each entry is {label, value}. The value is never shortened.
+	 */
+	static List<String[]> fullRows(DpsEstimate estimate, boolean breakdown)
+	{
+		List<String[]> rows = new ArrayList<String[]>();
+		rows.add(new String[] {"DPS", String.format(Locale.US, "%.2f", estimate.dps)});
+		if (breakdown)
+		{
+			rows.add(new String[] {"Max hit", Integer.toString(estimate.maxHit)});
+			rows.add(new String[] {
+				"Hit chance",
+				String.format(Locale.US, "%.1f%%", estimate.accuracy * 100.0)
+			});
+		}
+		if (estimate.defenceLabel != null && !estimate.defenceLabel.isEmpty())
+		{
+			rows.add(new String[] {"Defence", estimate.defenceLabel});
+		}
+		if (breakdown)
+		{
+			rows.add(new String[] {
+				"Attack speed",
+				String.format(Locale.US, "%.1fs", estimate.attackSpeedTicks * 0.6)
+			});
+			rows.add(new String[] {
+				"Stance",
+				estimate.styleLabel == null ? "" : estimate.styleLabel
+			});
+		}
+		return rows;
 	}
 
 	private Dimension renderMinimal(Graphics2D graphics, DpsEstimate estimate)
@@ -152,54 +186,38 @@ class DpsOverlay extends OverlayPanel
 		graphics.drawString(text, x, y);
 	}
 
-	private void addWrapped(FontMetrics metrics, String text, Color color, int innerWidth)
+	private void addLine(String left, String right, Color leftColor, Color rightColor)
 	{
-		List<String> lines = OverlayText.wrap(metrics, text, innerWidth);
-		for (int i = 0; i < lines.size(); i++)
+		LineComponent.LineComponentBuilder builder = LineComponent.builder()
+			.left(left)
+			.leftColor(leftColor);
+		if (right != null && !right.isEmpty())
 		{
-			panelComponent.getChildren().add(LineComponent.builder()
-				.left(lines.get(i))
-				.leftColor(color)
-				.build());
+			builder.right(right).rightColor(rightColor);
 		}
+		panelComponent.getChildren().add(builder.build());
 	}
 
-	private void addPair(FontMetrics metrics, String left, String right, Color leftColor, Color rightColor, int innerWidth)
+	static int contentWidth(FontMetrics metrics, List<String[]> rows, String note, String hint)
 	{
-		int rightBudget = Math.max(metrics.stringWidth("0"), innerWidth / 3);
-		String rightText = OverlayText.clip(metrics, right == null ? "" : right, rightBudget);
-		int leftBudget = Math.max(1, innerWidth - metrics.stringWidth(rightText) - COLUMN_GAP);
-		List<String> leftLines = OverlayText.wrap(metrics, left == null ? "" : left, leftBudget);
-		if (leftLines.isEmpty())
+		int width = 0;
+		for (int i = 0; i < rows.size(); i++)
 		{
-			leftLines.add("");
+			String[] row = rows.get(i);
+			int left = metrics.stringWidth(row[0] == null ? "" : row[0]);
+			int right = row.length > 1 && row[1] != null ? metrics.stringWidth(row[1]) : 0;
+			int gap = right > 0 ? COLUMN_GAP : 0;
+			width = Math.max(width, left + right + gap);
 		}
-		for (int i = 0; i < leftLines.size(); i++)
+		if (note != null && !note.isEmpty())
 		{
-			LineComponent.LineComponentBuilder builder = LineComponent.builder()
-				.left(leftLines.get(i))
-				.leftColor(leftColor);
-			if (i == 0 && !rightText.isEmpty())
-			{
-				builder.right(rightText).rightColor(rightColor);
-			}
-			panelComponent.getChildren().add(builder.build());
+			width = Math.max(width, metrics.stringWidth(note));
 		}
-	}
-
-	private int panelWidth()
-	{
-		Dimension preferred = getPreferredSize();
-		if (preferred != null && preferred.width > 0)
+		if (hint != null && !hint.isEmpty())
 		{
-			return preferred.width;
+			width = Math.max(width, metrics.stringWidth(hint));
 		}
-		return ComponentConstants.STANDARD_WIDTH;
-	}
-
-	private int innerWidth()
-	{
-		int inner = panelWidth() - ComponentConstants.STANDARD_BORDER * 2;
-		return Math.max(inner, 1);
+		int standardInner = ComponentConstants.STANDARD_WIDTH - ComponentConstants.STANDARD_BORDER * 2;
+		return Math.max(width, standardInner);
 	}
 }
