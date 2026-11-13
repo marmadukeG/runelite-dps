@@ -8,7 +8,6 @@ import net.runelite.api.InventoryID;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.ParamID;
-import net.runelite.api.Prayer;
 import net.runelite.api.Skill;
 import net.runelite.api.StructComposition;
 import net.runelite.api.gameval.VarPlayerID;
@@ -396,99 +395,7 @@ final class PlayerGear
 
 	private static void applyPrayers(Client client, CombatInput in)
 	{
-		if (client.isPrayerActive(Prayer.ZEAL))
-		{
-			in.meleeAttackPrayer = 125;
-			in.meleeStrengthPrayer = 128;
-		}
-		else if (client.isPrayerActive(Prayer.PIETY))
-		{
-			in.meleeAttackPrayer = 120;
-			in.meleeStrengthPrayer = 123;
-		}
-		else if (client.isPrayerActive(Prayer.CHIVALRY))
-		{
-			in.meleeAttackPrayer = 115;
-			in.meleeStrengthPrayer = 118;
-		}
-		else
-		{
-			if (client.isPrayerActive(Prayer.ULTIMATE_STRENGTH))
-			{
-				in.meleeStrengthPrayer = 115;
-			}
-			else if (client.isPrayerActive(Prayer.SUPERHUMAN_STRENGTH))
-			{
-				in.meleeStrengthPrayer = 110;
-			}
-			else if (client.isPrayerActive(Prayer.BURST_OF_STRENGTH))
-			{
-				in.meleeStrengthPrayer = 105;
-			}
-			if (client.isPrayerActive(Prayer.INCREDIBLE_REFLEXES))
-			{
-				in.meleeAttackPrayer = 115;
-			}
-			else if (client.isPrayerActive(Prayer.IMPROVED_REFLEXES))
-			{
-				in.meleeAttackPrayer = 110;
-			}
-			else if (client.isPrayerActive(Prayer.CLARITY_OF_THOUGHT))
-			{
-				in.meleeAttackPrayer = 105;
-			}
-		}
-
-		if (client.isPrayerActive(Prayer.RIGOUR))
-		{
-			in.rangedAttackPrayer = 120;
-			in.rangedStrengthPrayer = 123;
-		}
-		else if (client.isPrayerActive(Prayer.DEADEYE))
-		{
-			in.rangedAttackPrayer = 118;
-			in.rangedStrengthPrayer = 118;
-		}
-		else if (client.isPrayerActive(Prayer.EAGLE_EYE))
-		{
-			in.rangedAttackPrayer = 115;
-			in.rangedStrengthPrayer = 115;
-		}
-		else if (client.isPrayerActive(Prayer.HAWK_EYE))
-		{
-			in.rangedAttackPrayer = 110;
-			in.rangedStrengthPrayer = 110;
-		}
-		else if (client.isPrayerActive(Prayer.SHARP_EYE))
-		{
-			in.rangedAttackPrayer = 105;
-			in.rangedStrengthPrayer = 105;
-		}
-
-		if (client.isPrayerActive(Prayer.AUGURY))
-		{
-			in.magicAttackPrayer = 125;
-			in.magicDamagePrayerPermille = 40;
-		}
-		else if (client.isPrayerActive(Prayer.MYSTIC_VIGOUR))
-		{
-			in.magicAttackPrayer = 118;
-			in.magicDamagePrayerPermille = 30;
-		}
-		else if (client.isPrayerActive(Prayer.MYSTIC_MIGHT))
-		{
-			in.magicAttackPrayer = 115;
-			in.magicDamagePrayerPermille = 20;
-		}
-		else if (client.isPrayerActive(Prayer.MYSTIC_LORE))
-		{
-			in.magicAttackPrayer = 110;
-			in.magicDamagePrayerPermille = 10;
-		}
-		else if (client.isPrayerActive(Prayer.MYSTIC_WILL))
-		{
-			in.magicAttackPrayer = 105;
-		}
+		PrayerBonus.apply(in, PrayerBonus.active(client));
 	}
 
 	private static StyleSelection readStyle(Client client)

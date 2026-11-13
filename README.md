@@ -6,6 +6,8 @@ Right-click an attackable NPC and choose **Check DPS**. A panel in the top-right
 
 The estimate uses the gear you are wearing, your active prayers, and your boosted skill levels as RuneLite already reports them. Potions are not added a second time. Defence reductions are applied only for hits this client sees after the plugin is running.
 
+Hover a prayer icon in the prayer book or the quick-prayer screen, or a combat potion in the inventory or bank, to see the DPS gain or loss if that prayer or potion were toggled. The overlay number stays put until the prayer or potion is actually used. The delta uses the pinned NPC and the attack style you have selected. Turning on Rigour while Eagle Eye is up replaces Eagle Eye, the same way the client does. Ruinous prayers are not in this estimate.
+
 ## Sideload
 
 Requirements: JDK 11 or newer.

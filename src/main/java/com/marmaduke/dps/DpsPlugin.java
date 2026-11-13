@@ -2,6 +2,7 @@ package com.marmaduke.dps;
 
 import com.google.gson.Gson;
 import com.google.inject.Provides;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 import javax.inject.Inject;
@@ -16,6 +17,7 @@ import net.runelite.api.ItemContainer;
 import net.runelite.api.MenuAction;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
+import net.runelite.api.Prayer;
 import net.runelite.api.Skill;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
@@ -63,6 +65,9 @@ public class DpsPlugin extends Plugin
 	private DpsOverlay overlay;
 
 	@Inject
+	private DpsTooltipOverlay tooltipOverlay;
+
+	@Inject
 	private DpsConfig config;
 
 	@Inject
@@ -72,6 +77,8 @@ public class DpsPlugin extends Plugin
 	private final Map<Integer, DefenceModel> defenceByIndex = new HashMap<Integer, DefenceModel>();
 	private Integer targetIndex;
 	private DpsEstimate estimate;
+	private CombatInput currentInput;
+	private EnumSet<Prayer> currentPrayers = EnumSet.noneOf(Prayer.class);
 	private PendingSpec pendingSpec;
 	private int specialPercentage = -1;
 	private int lastHpChangeCycle;
@@ -90,12 +97,14 @@ public class DpsPlugin extends Plugin
 		log.debug("Loaded {} NPC combat stat rows", npcStats.size());
 		overlay.setPosition(config.position());
 		overlayManager.add(overlay);
+		overlayManager.add(tooltipOverlay);
 	}
 
 	@Override
 	protected void shutDown()
 	{
 		overlayManager.remove(overlay);
+		overlayManager.remove(tooltipOverlay);
 		clearTarget();
 		defenceByIndex.clear();
 		pendingSpec = null;
@@ -105,6 +114,16 @@ public class DpsPlugin extends Plugin
 	DpsEstimate getEstimate()
 	{
 		return estimate;
+	}
+
+	CombatInput getCurrentInput()
+	{
+		return currentInput;
+	}
+
+	EnumSet<Prayer> getCurrentPrayers()
+	{
+		return currentPrayers;
 	}
 
 	@Subscribe
@@ -280,6 +299,8 @@ public class DpsPlugin extends Plugin
 	{
 		targetIndex = null;
 		estimate = null;
+		currentInput = null;
+		currentPrayers = EnumSet.noneOf(Prayer.class);
 	}
 
 	private void recompute()
@@ -296,12 +317,16 @@ public class DpsPlugin extends Plugin
 		NpcCombatStats stats = npcStats.get(npc.getId());
 		if (stats == null)
 		{
+			currentInput = null;
+			currentPrayers = EnumSet.noneOf(Prayer.class);
 			estimate = DpsEstimate.message(npc.getName(), "No combat stats for this NPC");
 			return;
 		}
 		DefenceModel model = defenceByIndex.get(npc.getIndex());
 		CombatInput input = PlayerGear.build(client, itemManager, config.onSlayerTask(), stats, model);
 		String defenceLabel = model == null ? Integer.toString(stats.def) : model.overlayDefence();
+		currentInput = input;
+		currentPrayers = PrayerBonus.active(client);
 		estimate = CombatMath.estimate(input, stats.displayName(), defenceLabel);
 	}
 
