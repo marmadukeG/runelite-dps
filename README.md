@@ -1,6 +1,8 @@
 # Check DPS
 
-Sideloadable RuneLite plugin that estimates your damage per second against one NPC.
+RuneLite plugin that estimates your damage per second against one NPC.
+
+Install it from the Plugin Hub once the submission is accepted: open the plugin panel, click the plug icon, and search for **Check DPS**. The plugin turns on when it is installed. It does not use developer mode or a sideloaded jar.
 
 Right-click an attackable NPC and choose **Check DPS**. A panel in the top-right shows the estimate and updates every game tick (0.6s). It clears when that NPC dies or despawns. Unpin it from the overlay menu (**Clear**) or by right-clicking the same NPC and choosing **Clear DPS**.
 
@@ -8,32 +10,7 @@ The estimate uses the gear you are wearing, your active prayers, and your booste
 
 Hover a prayer icon in the prayer book or the quick-prayer screen, or a combat potion in the inventory or bank, to see the DPS gain or loss if that prayer or potion were toggled. The overlay number stays put until the prayer or potion is actually used. The delta uses the pinned NPC and the attack style you have selected. Turning on Rigour while Eagle Eye is up replaces Eagle Eye, the same way the client does. Ruinous prayers are not in this estimate.
 
-## Sideload
-
-Requirements: JDK 11 or newer.
-
-```bash
-./gradlew build
-```
-
-The jar is `build/libs/runelite-dps-1.0.0.jar`. It is a plain jar: `com/marmaduke/dps/DpsPlugin.class` sits at the jar root, the class extends `Plugin`, and `@PluginDescriptor(name = "Check DPS")` is visible at runtime. It is compiled against RuneLite client 1.13.6. Copy it into the sideload folder:
-
-- Linux and macOS: `~/.runelite/sideloaded-plugins`
-- Windows: `%USERPROFILE%\.runelite\sideloaded-plugins`
-
-RuneLite 1.13.6 only scans that folder when developer mode is actually on. Developer mode is `--developer-mode` **and** no launcher version. Launcher 2.6.10 sets the `runelite.launcher.version` system property, so a client started from the Jagex Launcher or RuneLite.exe keeps developer mode off even when the startup log shows `args: --developer-mode`. In that case `loadSideLoadPlugins` returns immediately, the log never says "Side-loading plugin", and hub plugins still load through `ExternalPluginManager`.
-
-Start the client jar yourself, with assertions, so the launcher property is absent:
-
-```text
-java -ea -jar RuneLite.jar --developer-mode
-```
-
-The launcher stores that jar under `%USERPROFILE%\.runelite\repository2\` (on Windows) or `~/.runelite/repository2/`. Without `-ea`, 1.13.6 stops at "Developers should enable assertions" and never loads plugins.
-
-In the plugin list, search for **Check DPS**.
-
-Plugin settings (group `checkdps`) move the overlay and toggle the stat breakdown. **Minimal overlay** (`minimalOverlay`) hides the panel and shows only three numbers, in order: DPS, max hit, and hit chance. **Reactive mode** (`reactiveMode`) drops the pin and shows DPS for the NPC you are attacking, switching when that target changes. Walking away keeps that target up for 60 seconds of not attacking, then hides it. **On slayer task** turns on the black mask and slayer helmet bonus, which the client cannot see on its own. Salve, void, and the other worn-gear bonuses are detected from equipment.
+Plugin settings (group `checkdps`) move the overlay and toggle the stat breakdown. **Minimal overlay** hides the panel and shows only three numbers, in order: DPS, max hit, and hit chance. **Reactive mode** drops the pin and shows DPS for the NPC you are attacking, switching when that target changes. Walking away keeps that target up for 60 seconds of not attacking, then hides it. **On slayer task** turns on the black mask and slayer helmet bonus, which the client cannot see on its own. Salve, void, and the other worn-gear bonuses are detected from equipment.
 
 ## What the formula covers
 
@@ -58,3 +35,31 @@ Monster defence, bonuses, attributes, elemental weakness, and the Tombs / magic-
 The overlay is the normal attack cycle. It does not include special-attack damage (those specs are used only to lower the target's stats), thralls, multi-target barrage, gear switches during the fight, mark of darkness, sunfire runes, the charge spell, inquisitor, the obsidian set, wilderness weapon damage (Craw's bow, webweaver, ursine chainmace), blowpipe dart strength, enchanted bolt procs, salamanders, chinchompa fuse distance, ruinous prayers, Forinthry surge, soulreaper stacks, a tonalztics double hit on a normal attack, other players' specs from before the plugin was watching, Tombs invocation scaling, the Tombs warden phase-two twisted bow double roll, keris, ratbane, colossal blade, golembane, leaf-bladed weapons, or crystal blessing.
 
 Emberlight's spec is modeled as a 5% drain of attack, strength, defence, magic, and ranged. The wiki lists every combat stat but does not publish a separate percent. When a melee weapon's stab, slash, and crush bonuses tie, the style index picks the type (stab, slash, then crush). A vulnerability that is still active when a later defence drain lands is restored as a flat amount, so the level after it expires can be slightly off. Shadow's 4x magic-damage multiplier is applied only when the monster row is flagged as Tombs of Amascut.
+
+## Building
+
+Requirements: JDK 11.
+
+```bash
+./gradlew build
+```
+
+`./gradlew run` starts a development client with this plugin loaded through `ExternalPluginManager`. Sign in with a [Jagex account](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts). That client is for development. Players install the plugin from the Plugin Hub.
+
+The displayed version is `1.0.0` (`version` in `runelite-plugin.properties`). Hub builds with `build=standard` replace `build.gradle` and compile against the current RuneLite client. This repository has no third-party dependencies beyond the client.
+
+## Submitting to the Plugin Hub
+
+This repository is not on the hub. To submit it, the maintainer still has to:
+
+1. Make https://github.com/marmadukeG/runelite-dps public. The hub clones the repository and will not build a private one.
+2. Fork https://github.com/runelite/plugin-hub and add `plugins/check-dps` (lowercase letters, digits, and dashes only):
+
+```
+repository=https://github.com/marmadukeG/runelite-dps.git
+commit=<full 40-character commit>
+```
+
+3. Open that pull request against `runelite/plugin-hub` and wait for the build and the Plugin Hub checks. Do not open a second pull request to fix review comments. Push to this repository and update `commit=` in the same hub pull request.
+
+The license is the BSD 2-Clause License in `LICENSE`, which lets RuneLite distribute the plugin jar on its own. Leave `@PluginDescriptor` `enabledByDefault` on and `developerPlugin` unset.

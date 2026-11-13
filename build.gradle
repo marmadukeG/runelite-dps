@@ -39,6 +39,7 @@ dependencies {
 
 	testImplementation 'junit:junit:4.13.2'
 	testImplementation group: 'net.runelite', name: 'client', version: runeLiteVersion
+	testImplementation group: 'net.runelite', name: 'jshell', version: runeLiteVersion
 	testRuntimeOnly "org.lwjgl:lwjgl:${lwjglVersion}:${lwjglNatives}"
 	testRuntimeOnly "org.lwjgl:lwjgl-opengl:${lwjglVersion}:${lwjglNatives}"
 }
@@ -77,9 +78,19 @@ String lwjglNativeClassifier() {
 group = 'com.marmaduke.dps'
 version = '1.0.0'
 
+// Plugin Hub submissions with build=standard replace this file. The tasks below
+// are for local development only. `run` loads the plugin through ExternalPluginManager.
+
 tasks.withType(JavaCompile).configureEach {
 	options.encoding = 'UTF-8'
 	options.release.set(11)
+}
+
+tasks.register('run', JavaExec) {
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.marmaduke.dps.DpsPluginTest'
+	jvmArgs '-ea'
+	args '--developer-mode', '--debug'
 }
 
 test {

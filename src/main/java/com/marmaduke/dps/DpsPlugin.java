@@ -44,8 +44,9 @@ import org.slf4j.LoggerFactory;
 
 @PluginDescriptor(
 	name = "Check DPS",
-	description = "Right-click an attackable NPC and choose Check DPS to pin a live damage estimate",
-	tags = {"dps", "combat", "npc"}
+	description = "Pin a live DPS estimate on an NPC you choose or are attacking",
+	tags = {"dps", "combat", "npc"},
+	enabledByDefault = true
 )
 public class DpsPlugin extends Plugin
 {

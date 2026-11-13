@@ -1,13 +1,14 @@
 package com.marmaduke.dps;
 
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 final class NpcStatsIndex
@@ -30,17 +31,22 @@ final class NpcStatsIndex
 		{
 			return new NpcStatsIndex(Collections.emptyMap());
 		}
-		List<NpcCombatStats> stats = gson.fromJson(
-			new InputStreamReader(in, StandardCharsets.UTF_8),
-			new TypeToken<List<NpcCombatStats>>()
-			{
-			}.getType());
-		Map<Integer, NpcCombatStats> byId = new HashMap<Integer, NpcCombatStats>();
-		if (stats != null)
+		JsonElement element;
+		try (InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8))
 		{
-			for (NpcCombatStats stat : stats)
+			element = new JsonParser().parse(reader);
+		}
+		catch (IOException ex)
+		{
+			return new NpcStatsIndex(Collections.emptyMap());
+		}
+		Map<Integer, NpcCombatStats> byId = new HashMap<Integer, NpcCombatStats>();
+		if (element != null && element.isJsonArray())
+		{
+			for (JsonElement row : element.getAsJsonArray())
 			{
-				if (!byId.containsKey(stat.id))
+				NpcCombatStats stat = gson.fromJson(row, NpcCombatStats.class);
+				if (stat != null && !byId.containsKey(stat.id))
 				{
 					byId.put(stat.id, stat);
 				}
