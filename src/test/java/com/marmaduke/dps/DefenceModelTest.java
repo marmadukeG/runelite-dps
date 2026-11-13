@@ -8,6 +8,18 @@ import static org.junit.Assert.assertTrue;
 public class DefenceModelTest
 {
 	@Test
+	public void overlayShowsOriginalMinusTheReduction()
+	{
+		DefenceModel reduced = new DefenceModel(stats(90));
+		reduced.applyBandosGodsword(30);
+		assertEquals(60, reduced.defence);
+		assertEquals("90-30", reduced.overlayDefence());
+
+		DefenceModel untouched = new DefenceModel(stats(90));
+		assertEquals("90", untouched.overlayDefence());
+	}
+
+	@Test
 	public void dragonWarhammerStacksOnTheCurrentLevel()
 	{
 		DefenceModel model = new DefenceModel(stats(135));

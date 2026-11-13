@@ -90,7 +90,7 @@ class DpsOverlay extends OverlayPanel
 			for (int i = 0; i < rows.size(); i++)
 			{
 				String[] row = rows.get(i);
-				Color leftColor = "Defence".equals(row[0]) ? Color.LIGHT_GRAY : Color.WHITE;
+				Color leftColor = Color.WHITE;
 				Color rightColor = "DPS".equals(row[0]) ? DPS_COLOR : leftColor;
 				addLine(row[0], row[1], leftColor, rightColor);
 			}
@@ -133,7 +133,7 @@ class DpsOverlay extends OverlayPanel
 		}
 		if (estimate.defenceLabel != null && !estimate.defenceLabel.isEmpty())
 		{
-			rows.add(new String[] {"Defence", estimate.defenceLabel});
+			rows.add(new String[] {estimate.defenceLabel, ""});
 		}
 		if (breakdown)
 		{

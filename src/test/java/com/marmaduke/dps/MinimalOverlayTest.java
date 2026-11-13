@@ -42,7 +42,7 @@ public class MinimalOverlayTest
 			0.512,
 			5,
 			"Rapid",
-			"Def 120 (vulnerability)",
+			"90-30",
 			"");
 
 		List<String[]> rows = DpsOverlay.fullRows(estimate, true);
@@ -51,7 +51,7 @@ public class MinimalOverlayTest
 		assertArrayEquals(new String[] {"DPS", "12.34"}, rows.get(0));
 		assertArrayEquals(new String[] {"Max hit", "86"}, rows.get(1));
 		assertArrayEquals(new String[] {"Hit chance", "51.2%"}, rows.get(2));
-		assertArrayEquals(new String[] {"Defence", "Def 120 (vulnerability)"}, rows.get(3));
+		assertArrayEquals(new String[] {"90-30", ""}, rows.get(3));
 		assertArrayEquals(new String[] {"Attack speed", "3.0s"}, rows.get(4));
 		assertArrayEquals(new String[] {"Stance", "Rapid"}, rows.get(5));
 

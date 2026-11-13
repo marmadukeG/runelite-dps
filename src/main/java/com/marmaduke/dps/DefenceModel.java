@@ -154,6 +154,19 @@ final class DefenceModel
 		}
 	}
 
+	/**
+	 * Overlay text for defence. Unreduced levels are the current number. A reduced level is the
+	 * starting defence, a hyphen, and the points removed: 90 reduced by 30 is {@code 90-30}.
+	 */
+	String overlayDefence()
+	{
+		if (defence < baseDefence)
+		{
+			return baseDefence + "-" + (baseDefence - defence);
+		}
+		return Integer.toString(defence);
+	}
+
 	String describe()
 	{
 		StringBuilder builder = new StringBuilder();

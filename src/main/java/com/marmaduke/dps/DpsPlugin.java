@@ -301,19 +301,7 @@ public class DpsPlugin extends Plugin
 		}
 		DefenceModel model = defenceByIndex.get(npc.getIndex());
 		CombatInput input = PlayerGear.build(client, itemManager, config.onSlayerTask(), stats, model);
-		String defenceLabel = "Def " + (model == null ? stats.def : model.defence);
-		if (model != null)
-		{
-			String reductions = model.describe();
-			if (!reductions.isEmpty())
-			{
-				defenceLabel = defenceLabel + " (" + reductions + ")";
-			}
-			if (input.combatStyle == CombatStyle.MAGIC && model.magic != stats.magic)
-			{
-				defenceLabel = defenceLabel + ", Mag " + model.magic;
-			}
-		}
+		String defenceLabel = model == null ? Integer.toString(stats.def) : model.overlayDefence();
 		estimate = CombatMath.estimate(input, stats.displayName(), defenceLabel);
 	}
 
