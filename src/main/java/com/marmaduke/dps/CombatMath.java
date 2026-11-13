@@ -600,34 +600,91 @@ final class CombatMath
 	{
 		if (in.combatStyle == CombatStyle.MAGIC)
 		{
-			if (in.spellName != null && !in.spellName.isEmpty())
+			String spell = in.spellName != null && !in.spellName.isEmpty() ? in.spellName : "Magic";
+			if (in.stance == AttackStance.MAGIC_DEFENSIVE)
 			{
-				return in.spellName;
+				return spell + " defensive";
 			}
-			return "Magic";
+			if (in.stance == AttackStance.MAGIC_AUTOCAST)
+			{
+				return spell + " autocast";
+			}
+			if (in.stance == AttackStance.MAGIC_ACCURATE)
+			{
+				return spell + " accurate";
+			}
+			return spell;
 		}
 		if (in.combatStyle == CombatStyle.RANGED)
 		{
+			String ammo;
 			switch (in.rangedStyle)
 			{
 				case LIGHT:
-					return "Ranged (light)";
+					ammo = "light";
+					break;
 				case HEAVY:
-					return "Ranged (heavy)";
+					ammo = "heavy";
+					break;
 				case STANDARD:
 				default:
-					return "Ranged";
+					ammo = "standard";
+					break;
 			}
+			return rangedStanceLabel(in.stance) + " (" + ammo + ")";
 		}
+		String melee;
 		switch (in.meleeStyle)
 		{
 			case STAB:
-				return "Stab";
+				melee = "Stab";
+				break;
 			case CRUSH:
-				return "Crush";
+				melee = "Crush";
+				break;
 			case SLASH:
 			default:
-				return "Slash";
+				melee = "Slash";
+				break;
 		}
+		return melee + " " + meleeStanceLabel(in.stance);
+	}
+
+	private static String rangedStanceLabel(AttackStance stance)
+	{
+		if (stance == AttackStance.RANGED_RAPID)
+		{
+			return "Rapid";
+		}
+		if (stance == AttackStance.RANGED_LONG)
+		{
+			return "Longrange";
+		}
+		return "Accurate";
+	}
+
+	private static String meleeStanceLabel(AttackStance stance)
+	{
+		if (stance == AttackStance.MELEE_AGGRESSIVE)
+		{
+			return "aggressive";
+		}
+		if (stance == AttackStance.MELEE_CONTROLLED)
+		{
+			return "controlled";
+		}
+		if (stance == AttackStance.MELEE_DEFENSIVE)
+		{
+			return "defensive";
+		}
+		if (stance == AttackStance.MAGIC_AUTOCAST)
+		{
+			return "autocast";
+		}
+		if (stance == AttackStance.MAGIC_DEFENSIVE)
+		{
+			return "defensive cast";
+		}
+		return "accurate";
 	}
 }

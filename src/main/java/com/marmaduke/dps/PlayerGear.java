@@ -95,8 +95,8 @@ final class PlayerGear
 		in.uncharged = isUncharged(weaponName);
 		in.meleeStyle = meleeStyle(weaponEquipment, client);
 
-		String styleName = readStyleName(client);
-		in.stance = stanceFrom(styleName, in.poweredStaff);
+		StyleSelection style = readStyle(client);
+		in.stance = stanceFrom(style, in.poweredStaff);
 		if (in.poweredStaff)
 		{
 			in.combatStyle = CombatStyle.MAGIC;
@@ -117,7 +117,9 @@ final class PlayerGear
 		{
 			in.combatStyle = CombatStyle.RANGED;
 		}
-		else if (in.stance == AttackStance.MAGIC_ACCURATE || in.stance == AttackStance.MAGIC_DEFENSIVE)
+		else if (in.stance == AttackStance.MAGIC_ACCURATE
+			|| in.stance == AttackStance.MAGIC_AUTOCAST
+			|| in.stance == AttackStance.MAGIC_DEFENSIVE)
 		{
 			in.combatStyle = CombatStyle.MAGIC;
 		}
@@ -489,7 +491,7 @@ final class PlayerGear
 		}
 	}
 
-	private static String readStyleName(Client client)
+	private static StyleSelection readStyle(Client client)
 	{
 		try
 		{
@@ -500,103 +502,169 @@ final class PlayerGear
 			{
 				index += castingMode;
 			}
+			String[] names;
 			if (weaponType == 22)
 			{
-				return pick(new String[]{"Accurate", "Aggressive", null, "Defensive", "Casting", "Defensive Casting"}, index);
+				names = new String[]{"Accurate", "Aggressive", null, "Defensive", "Casting", "Defensive Casting"};
 			}
-			if (weaponType == 30)
+			else if (weaponType == 30)
 			{
-				return pick(new String[]{"Accurate", "Aggressive", "Aggressive", "Defensive"}, index);
+				names = new String[]{"Accurate", "Aggressive", "Aggressive", "Defensive"};
 			}
-			int weaponStyleEnum = client.getEnum(EnumID.WEAPON_STYLES).getIntValue(weaponType);
-			if (weaponStyleEnum == -1)
+			else
 			{
-				return "";
-			}
-			EnumComposition styles = client.getEnum(weaponStyleEnum);
-			int[] structs = styles.getIntVals();
-			String[] names = new String[structs.length];
-			int cursor = 0;
-			for (int style : structs)
-			{
-				StructComposition composition = client.getStructComposition(style);
-				String name = composition.getStringValue(ParamID.ATTACK_STYLE_NAME);
-				if (name != null && "Other".equalsIgnoreCase(name))
+				int weaponStyleEnum = client.getEnum(EnumID.WEAPON_STYLES).getIntValue(weaponType);
+				if (weaponStyleEnum == -1)
 				{
+					return StyleSelection.empty();
+				}
+				EnumComposition styles = client.getEnum(weaponStyleEnum);
+				int[] structs = styles.getIntVals();
+				names = new String[structs.length];
+				int cursor = 0;
+				for (int style : structs)
+				{
+					StructComposition composition = client.getStructComposition(style);
+					String name = composition.getStringValue(ParamID.ATTACK_STYLE_NAME);
+					if (name != null && "Other".equalsIgnoreCase(name))
+					{
+						cursor++;
+						continue;
+					}
+					if (cursor == 5 && name != null && "Defensive".equalsIgnoreCase(name))
+					{
+						name = "Defensive Casting";
+					}
+					if (cursor < names.length)
+					{
+						names[cursor] = name;
+					}
 					cursor++;
-					continue;
 				}
-				if (cursor == 5 && name != null && "Defensive".equalsIgnoreCase(name))
-				{
-					name = "Defensive Casting";
-				}
-				if (cursor < names.length)
-				{
-					names[cursor] = name;
-				}
-				cursor++;
 			}
-			return pick(names, index);
+			return StyleSelection.of(names, index);
 		}
 		catch (RuntimeException ex)
 		{
-			return "";
+			return StyleSelection.empty();
 		}
 	}
 
-	private static String pick(String[] names, int index)
+	/**
+	 * The cache names both the accurate and rapid ranged buttons "Ranging".
+	 * On a bow the first is accurate and the second is rapid. A lone "Ranging"
+	 * that is not the first button, such as a salamander's flare, is rapid.
+	 */
+	static AttackStance stanceFrom(StyleSelection style, boolean poweredStaff)
 	{
-		if (index < 0 || index >= names.length || names[index] == null)
-		{
-			return "";
-		}
-		return names[index];
-	}
-
-	static AttackStance stanceFrom(String name, boolean poweredStaff)
-	{
-		if (name == null)
+		if (style == null || style.name == null || style.name.isEmpty())
 		{
 			return poweredStaff ? AttackStance.MAGIC_ACCURATE : AttackStance.MELEE_AGGRESSIVE;
 		}
-		String lower = name.toLowerCase();
+		String lower = style.name.toLowerCase();
 		if (lower.contains("rapid"))
 		{
-			return AttackStance.RANGED_RAPID;
+			return promotePoweredStaff(AttackStance.RANGED_RAPID, poweredStaff);
 		}
 		if (lower.contains("longrange"))
 		{
-			return AttackStance.RANGED_LONG;
+			return promotePoweredStaff(AttackStance.RANGED_LONG, poweredStaff);
 		}
 		if (lower.contains("ranging"))
 		{
-			return AttackStance.RANGED_ACCURATE;
+			boolean rapid = style.rangingTotal >= 2
+				? style.rangingBefore > 0
+				: style.index > 0;
+			return promotePoweredStaff(rapid ? AttackStance.RANGED_RAPID : AttackStance.RANGED_ACCURATE, poweredStaff);
 		}
 		if (lower.contains("defensive casting"))
 		{
-			return AttackStance.MAGIC_DEFENSIVE;
+			return promotePoweredStaff(AttackStance.MAGIC_DEFENSIVE, poweredStaff);
 		}
 		if (lower.contains("casting"))
 		{
-			return AttackStance.MAGIC_ACCURATE;
+			return promotePoweredStaff(AttackStance.MAGIC_AUTOCAST, poweredStaff);
 		}
 		if (lower.contains("controlled"))
 		{
-			return AttackStance.MELEE_CONTROLLED;
+			return promotePoweredStaff(AttackStance.MELEE_CONTROLLED, poweredStaff);
 		}
 		if (lower.contains("aggressive"))
 		{
-			return AttackStance.MELEE_AGGRESSIVE;
+			return promotePoweredStaff(AttackStance.MELEE_AGGRESSIVE, poweredStaff);
 		}
 		if (lower.contains("defensive"))
 		{
-			return AttackStance.MELEE_DEFENSIVE;
+			return promotePoweredStaff(AttackStance.MELEE_DEFENSIVE, poweredStaff);
 		}
 		if (lower.contains("accurate"))
 		{
-			return poweredStaff ? AttackStance.MAGIC_ACCURATE : AttackStance.MELEE_ACCURATE;
+			return promotePoweredStaff(AttackStance.MELEE_ACCURATE, poweredStaff);
 		}
-		return poweredStaff ? AttackStance.MAGIC_ACCURATE : AttackStance.MELEE_AGGRESSIVE;
+		return promotePoweredStaff(AttackStance.MELEE_AGGRESSIVE, poweredStaff);
+	}
+
+	private static AttackStance promotePoweredStaff(AttackStance stance, boolean poweredStaff)
+	{
+		if (!poweredStaff)
+		{
+			return stance;
+		}
+		if (stance == AttackStance.RANGED_LONG
+			|| stance == AttackStance.MELEE_DEFENSIVE
+			|| stance == AttackStance.MAGIC_DEFENSIVE)
+		{
+			return AttackStance.MAGIC_DEFENSIVE;
+		}
+		return AttackStance.MAGIC_ACCURATE;
+	}
+
+	static final class StyleSelection
+	{
+		final String name;
+		final int index;
+		final int rangingBefore;
+		final int rangingTotal;
+
+		private StyleSelection(String name, int index, int rangingBefore, int rangingTotal)
+		{
+			this.name = name;
+			this.index = index;
+			this.rangingBefore = rangingBefore;
+			this.rangingTotal = rangingTotal;
+		}
+
+		static StyleSelection empty()
+		{
+			return new StyleSelection("", 0, 0, 0);
+		}
+
+		static StyleSelection of(String[] names, int index)
+		{
+			int rangingBefore = 0;
+			int rangingTotal = 0;
+			String selected = "";
+			if (names != null)
+			{
+				for (int i = 0; i < names.length; i++)
+				{
+					String name = names[i];
+					if (name != null && name.toLowerCase().contains("ranging"))
+					{
+						if (i < index)
+						{
+							rangingBefore++;
+						}
+						rangingTotal++;
+					}
+					if (i == index && name != null)
+					{
+						selected = name;
+					}
+				}
+			}
+			return new StyleSelection(selected, index, rangingBefore, rangingTotal);
+		}
 	}
 
 	private static String itemName(ItemManager itemManager, int itemId)
