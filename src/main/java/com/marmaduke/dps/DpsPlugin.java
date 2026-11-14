@@ -43,8 +43,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @PluginDescriptor(
-	name = "Check DPS",
-	description = "Pin a live DPS estimate on an NPC you choose or are attacking",
+	name = "Live DPS",
+	description = "Shows live DPS, max hit, and hit chance for the NPC you pin or attack",
 	tags = {"dps", "combat", "npc"},
 	enabledByDefault = true
 )

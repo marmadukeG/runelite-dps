@@ -1,8 +1,8 @@
-# Check DPS
+# Live DPS
 
 RuneLite plugin that estimates your damage per second against one NPC.
 
-Install it from the Plugin Hub once the submission is accepted: open the plugin panel, click the plug icon, and search for **Check DPS**. The plugin turns on when it is installed. It does not use developer mode or a sideloaded jar.
+Install it from the Plugin Hub once the submission is accepted: open the plugin panel, click the plug icon, and search for **Live DPS**. The plugin turns on when it is installed. It does not use developer mode or a sideloaded jar.
 
 Right-click an attackable NPC and choose **Check DPS**. A panel in the top-right shows the estimate and updates every game tick (0.6s). It clears when that NPC dies or despawns. Unpin it from the overlay menu (**Clear**) or by right-clicking the same NPC and choosing **Clear DPS**.
 
