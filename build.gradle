@@ -1,0 +1,102 @@
+plugins {
+	id 'java'
+}
+
+repositories {
+	// Classified artifacts (LWJGL natives) are looked up only in mavenLocal when it
+	// is on the search path, so keep LWJGL on Maven Central.
+	mavenLocal() {
+		content {
+			excludeGroup("org.lwjgl")
+		}
+	}
+	maven {
+		url = 'https://repo.runelite.net'
+		content {
+			includeGroupByRegex("net\\.runelite.*")
+		}
+	}
+	mavenCentral()
+}
+
+def runeLiteVersion = '1.13.6'
+
+// The published client POM depends on every LWJGL native classifier. Gradle then
+// tries to fetch all of them, including ones that do not match this machine.
+// Keep the plain jars and add only the classifier for the OS running the build.
+def lwjglVersion = '3.3.2'
+def lwjglNatives = lwjglNativeClassifier()
+
+dependencies {
+	components {
+		withModule("net.runelite:client", StripLwjglNativeDependencies)
+	}
+
+	compileOnly group: 'net.runelite', name: 'client', version: runeLiteVersion
+
+	compileOnly 'org.projectlombok:lombok:1.18.30'
+	annotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+	testImplementation 'junit:junit:4.13.2'
+	testImplementation group: 'net.runelite', name: 'client', version: runeLiteVersion
+	testImplementation group: 'net.runelite', name: 'jshell', version: runeLiteVersion
+	testRuntimeOnly "org.lwjgl:lwjgl:${lwjglVersion}:${lwjglNatives}"
+	testRuntimeOnly "org.lwjgl:lwjgl-opengl:${lwjglVersion}:${lwjglNatives}"
+}
+
+abstract class StripLwjglNativeDependencies implements ComponentMetadataRule {
+	void execute(ComponentMetadataContext context) {
+		context.details.allVariants {
+			withDependencies {
+				removeAll { dependency ->
+					dependency.artifactSelectors.any { artifact ->
+						def classifier = artifact.classifier
+						classifier != null && classifier.startsWith("natives-")
+					}
+				}
+			}
+		}
+	}
+}
+
+String lwjglNativeClassifier() {
+	String os = System.getProperty("os.name").toLowerCase(Locale.ROOT)
+	String arch = System.getProperty("os.arch").toLowerCase(Locale.ROOT)
+	boolean arm = arch.contains("aarch64") || arch.contains("arm")
+	if (os.contains("win")) {
+		if (arch == "x86" || arch == "i386" || arch == "i686") {
+			return "natives-windows-x86"
+		}
+		return arm ? "natives-windows-arm64" : "natives-windows"
+	}
+	if (os.contains("mac") || os.contains("darwin")) {
+		return arm ? "natives-macos-arm64" : "natives-macos"
+	}
+	return arm ? "natives-linux-arm64" : "natives-linux"
+}
+
+group = 'com.marmaduke.dps'
+version = '1.0.0'
+
+// Plugin Hub submissions with build=standard replace this file. The tasks below
+// are for local development only. `run` loads the plugin through ExternalPluginManager.
+
+tasks.withType(JavaCompile).configureEach {
+	options.encoding = 'UTF-8'
+	options.release.set(11)
+}
+
+tasks.register('run', JavaExec) {
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.marmaduke.dps.DpsPluginTest'
+	jvmArgs '-ea'
+	args '--developer-mode', '--debug'
+}
+
+test {
+	dependsOn tasks.named('jar')
+	testLogging {
+		events 'passed', 'failed', 'skipped'
+		exceptionFormat 'full'
+	}
+}
