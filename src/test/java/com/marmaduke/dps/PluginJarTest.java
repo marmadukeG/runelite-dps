@@ -33,7 +33,7 @@ public class PluginJarTest
 			try (InputStream in = zip.getInputStream(plugin))
 			{
 				String utf = new String(in.readAllBytes(), StandardCharsets.ISO_8859_1);
-				assertTrue(utf.contains("Check DPS"));
+				assertTrue(utf.contains("Live DPS"));
 				assertFalse(utf.contains("developerPlugin"));
 			}
 		}
