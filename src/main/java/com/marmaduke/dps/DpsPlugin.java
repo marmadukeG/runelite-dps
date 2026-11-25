@@ -24,7 +24,6 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.InteractingChanged;
 import net.runelite.api.events.MenuEntryAdded;
-import net.runelite.api.events.NpcChanged;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.events.VarbitChanged;
@@ -82,6 +81,7 @@ public class DpsPlugin extends Plugin
 
 	private Integer targetIndex;
 	private int reactiveIdleTicks;
+	private NpcCombatStats targetStats;
 	private DpsEstimate estimate;
 	private CombatInput currentInput;
 	private EnumSet<Prayer> currentPrayers = EnumSet.noneOf(Prayer.class);
@@ -198,7 +198,11 @@ public class DpsPlugin extends Plugin
 		{
 			return;
 		}
-		followAttackTarget(false);
+		Actor target = event.getTarget();
+		if (target instanceof NPC && isAttackTarget((NPC) target))
+		{
+			noteAttackTarget((NPC) target);
+		}
 	}
 
 	@Subscribe
@@ -232,7 +236,7 @@ public class DpsPlugin extends Plugin
 		if (targetIndex != null)
 		{
 			NPC target = findNpc(targetIndex);
-			if (target == null || target.isDead() || (target.getHealthScale() > 0 && target.getHealthRatio() == 0))
+			if (target == null || clearForHealth(target.isDead(), target.getHealthRatio(), target.getHealthScale()))
 			{
 				clearTarget();
 				return;
@@ -254,13 +258,6 @@ public class DpsPlugin extends Plugin
 		{
 			pendingSpec = null;
 		}
-	}
-
-	@Subscribe
-	public void onNpcChanged(NpcChanged event)
-	{
-		int index = event.getNpc().getIndex();
-		defenceByIndex.remove(index);
 	}
 
 	@Subscribe
@@ -325,12 +322,7 @@ public class DpsPlugin extends Plugin
 		Actor interacting = player.getInteracting();
 		if (interacting instanceof NPC && isAttackTarget((NPC) interacting))
 		{
-			reactiveIdleTicks = 0;
-			NPC npc = (NPC) interacting;
-			if (targetIndex == null || targetIndex.intValue() != npc.getIndex())
-			{
-				selectTarget(npc.getIndex());
-			}
+			noteAttackTarget((NPC) interacting);
 			return;
 		}
 		if (!advanceIdle || targetIndex == null)
@@ -349,9 +341,50 @@ public class DpsPlugin extends Plugin
 		return idleTicks >= REACTIVE_HOLD_TICKS;
 	}
 
+	/**
+	 * A hidden health bar is not a death. In multi the bar is often missing, which
+	 * reports ratio 0 with the last scale, or -1 when the server sent nothing.
+	 * Clearing on that wiped the NPC and the overlay fell back to zeros. The 60s
+	 * hold still drops the target after the player stops attacking.
+	 */
+	static boolean clearForHealth(boolean deadFlag, int healthRatio, int healthScale)
+	{
+		// ratio 0 with a leftover scale, and -1 when no bar was sent, are both
+		// normal for a living NPC. Neither one ends the target early.
+		if (healthRatio == 0 || healthScale <= 0 || healthRatio < 0)
+		{
+			return deadFlag;
+		}
+		return deadFlag;
+	}
+
+	/**
+	 * Keep the numbers already on screen unless gear, prayers, boosts, or the
+	 * monster's own stats changed. A tick that failed to read the NPC must not
+	 * replace them.
+	 */
+	static boolean keepDisplayedEstimate(boolean haveNumbers, boolean offenceChanged, boolean monsterChanged)
+	{
+		return haveNumbers && !offenceChanged && !monsterChanged;
+	}
+
+	/**
+	 * Do not swap onto an NPC whose stats cannot be resolved while the current
+	 * target still has them. Multi-combat interaction flickers onto neighbours
+	 * that are not in the dataset, and that used to zero the overlay.
+	 */
+	static boolean acceptAttackSwitch(boolean haveStatsForCurrent, boolean nextResolves)
+	{
+		if (!haveStatsForCurrent)
+		{
+			return true;
+		}
+		return nextResolves;
+	}
+
 	private static boolean isAttackTarget(NPC npc)
 	{
-		if (npc.isDead() || (npc.getHealthScale() > 0 && npc.getHealthRatio() == 0))
+		if (npc.isDead())
 		{
 			return false;
 		}
@@ -379,6 +412,26 @@ public class DpsPlugin extends Plugin
 		return false;
 	}
 
+	private void noteAttackTarget(NPC npc)
+	{
+		reactiveIdleTicks = 0;
+		if (targetIndex != null && targetIndex.intValue() == npc.getIndex())
+		{
+			return;
+		}
+		boolean nextResolves = resolves(npc);
+		if (!acceptAttackSwitch(targetStats != null, nextResolves))
+		{
+			return;
+		}
+		selectTarget(npc.getIndex());
+	}
+
+	private boolean resolves(NPC npc)
+	{
+		return npcStats.resolve(npc.getId(), compositionId(npc), transformedId(npc), npc.getName(), targetStats) != null;
+	}
+
 	private void selectTarget(int index)
 	{
 		targetIndex = index;
@@ -393,6 +446,7 @@ public class DpsPlugin extends Plugin
 	private void clearTarget()
 	{
 		targetIndex = null;
+		targetStats = null;
 		estimate = null;
 		currentInput = null;
 		currentPrayers = EnumSet.noneOf(Prayer.class);
@@ -410,20 +464,69 @@ public class DpsPlugin extends Plugin
 		{
 			return;
 		}
-		NpcCombatStats stats = npcStats.get(npc.getId());
+		NpcCombatStats stats = npcStats.resolve(
+			npc.getId(),
+			compositionId(npc),
+			transformedId(npc),
+			npc.getName(),
+			targetStats);
 		if (stats == null)
 		{
+			stats = targetStats;
+		}
+		if (stats == null)
+		{
+			if (keepDisplayedEstimate(hasNumbers(), false, false))
+			{
+				return;
+			}
 			currentInput = null;
 			currentPrayers = EnumSet.noneOf(Prayer.class);
-			estimate = DpsEstimate.message(npc.getName(), "No combat stats for this NPC");
+			estimate = DpsEstimate.message(npcName(npc), "No combat stats for this NPC");
 			return;
 		}
+		targetStats = stats;
 		DefenceModel model = defenceByIndex.get(npc.getIndex());
+		boolean equipmentLoaded = client.getItemContainer(InventoryID.EQUIPMENT) != null;
 		CombatInput input = PlayerGear.build(client, itemManager, config.onSlayerTask(), stats, model);
+		if (!equipmentLoaded)
+		{
+			CombatInput.keepGearIfUnread(currentInput, input);
+		}
+		CombatInput.keepSpellIfUnread(currentInput, input);
+		boolean offenceChanged = currentInput != null && CombatInput.offenceChanged(currentInput, input);
+		boolean monsterChanged = currentInput != null && CombatInput.monsterChanged(currentInput, input);
+		if (keepDisplayedEstimate(hasNumbers(), offenceChanged, monsterChanged))
+		{
+			return;
+		}
 		String defenceLabel = model == null ? Integer.toString(stats.def) : model.overlayDefence();
 		currentInput = input;
 		currentPrayers = PrayerBonus.active(client);
 		estimate = CombatMath.estimate(input, stats.displayName(), defenceLabel);
+	}
+
+	private boolean hasNumbers()
+	{
+		return estimate != null && estimate.attackSpeedTicks > 0;
+	}
+
+	private static int compositionId(NPC npc)
+	{
+		NPCComposition composition = npc.getComposition();
+		return composition == null ? -1 : composition.getId();
+	}
+
+	private static int transformedId(NPC npc)
+	{
+		NPCComposition composition = npc.getTransformedComposition();
+		return composition == null ? -1 : composition.getId();
+	}
+
+	private static String npcName(NPC npc)
+	{
+		String name = npc.getName();
+		return name == null ? "" : name;
 	}
 
 	private void armSpec(int serverTicks)
@@ -640,7 +743,12 @@ public class DpsPlugin extends Plugin
 		{
 			return existing;
 		}
-		NpcCombatStats stats = npcStats.get(npc.getId());
+		NpcCombatStats stats = npcStats.resolve(
+			npc.getId(),
+			compositionId(npc),
+			transformedId(npc),
+			npc.getName(),
+			targetStats);
 		if (stats == null)
 		{
 			return null;
