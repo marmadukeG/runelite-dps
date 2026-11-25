@@ -127,6 +127,77 @@ public class CombatMathTest
 	}
 
 	@Test
+	public void windStrikeScalesUpToFireStrike()
+	{
+		assertEquals(2, elementalHit("Wind Strike", 2, 1));
+		assertEquals(2, elementalHit("Wind Strike", 2, 4));
+		assertEquals(4, elementalHit("Wind Strike", 2, 5));
+		assertEquals(4, elementalHit("Water Strike", 4, 5));
+		assertEquals(6, elementalHit("Wind Strike", 2, 9));
+		assertEquals(6, elementalHit("Earth Strike", 6, 9));
+		assertEquals(8, elementalHit("Wind Strike", 2, 13));
+		assertEquals(8, elementalHit("Water Strike", 4, 13));
+		assertEquals(8, elementalHit("Earth Strike", 6, 13));
+		assertEquals(8, elementalHit("Fire Strike", 8, 13));
+		assertEquals(8, elementalHit("Wind Strike", 2, 99));
+		assertEquals(8, elementalHit("Fire Strike", 8, 99));
+	}
+
+	@Test
+	public void boltBlastWaveAndSurgeScaleToTheirFireSpell()
+	{
+		assertEquals(9, elementalHit("Wind Bolt", 9, 17));
+		assertEquals(10, elementalHit("Wind Bolt", 9, 23));
+		assertEquals(11, elementalHit("Earth Bolt", 11, 29));
+		assertEquals(12, elementalHit("Wind Bolt", 9, 35));
+		assertEquals(12, elementalHit("Fire Bolt", 12, 99));
+
+		assertEquals(13, elementalHit("Wind Blast", 13, 41));
+		assertEquals(14, elementalHit("Water Blast", 14, 47));
+		assertEquals(15, elementalHit("Earth Blast", 15, 53));
+		assertEquals(16, elementalHit("Wind Blast", 13, 59));
+
+		assertEquals(17, elementalHit("Wind Wave", 17, 62));
+		assertEquals(18, elementalHit("Wind Wave", 17, 65));
+		assertEquals(19, elementalHit("Earth Wave", 19, 70));
+		assertEquals(20, elementalHit("Wind Wave", 17, 75));
+
+		assertEquals(21, elementalHit("Wind Surge", 21, 81));
+		assertEquals(22, elementalHit("Water Surge", 22, 85));
+		assertEquals(23, elementalHit("Earth Surge", 23, 90));
+		assertEquals(24, elementalHit("Wind Surge", 21, 95));
+		assertEquals(24, elementalHit("Fire Surge", 24, 99));
+	}
+
+	@Test
+	public void chaosGauntletsAddAfterTheScaledBoltBase()
+	{
+		CombatInput in = new CombatInput();
+		in.combatStyle = CombatStyle.MAGIC;
+		in.spellName = "Wind Bolt";
+		in.spellMaxHit = 9;
+		in.spellElement = "air";
+		in.spellbook = "standard";
+		in.magicLevel = 35;
+		in.chaosGauntlets = true;
+
+		assertEquals(15, CombatMath.maxHit(in));
+	}
+
+	@Test
+	public void ancientSpellsDoNotUseElementalScaling()
+	{
+		CombatInput in = new CombatInput();
+		in.combatStyle = CombatStyle.MAGIC;
+		in.spellName = "Ice Barrage";
+		in.spellMaxHit = 30;
+		in.spellbook = "ancient";
+		in.magicLevel = 99;
+
+		assertEquals(30, CombatMath.maxHit(in));
+	}
+
+	@Test
 	public void fireSurgeAddsOccultThenSlayerHelm()
 	{
 		CombatInput in = new CombatInput();
@@ -180,6 +251,16 @@ public class CombatMathTest
 		assertEquals(4, estimate.attackSpeedTicks);
 		double expected = CombatMath.expectedDamage(estimate.accuracy, estimate.maxHit, 0);
 		assertEquals(expected / 2.4, estimate.dps, 0.0001);
+	}
+
+	private static int elementalHit(String name, int listed, int magic)
+	{
+		CombatInput in = new CombatInput();
+		in.combatStyle = CombatStyle.MAGIC;
+		in.spellName = name;
+		in.spellMaxHit = listed;
+		in.magicLevel = magic;
+		return CombatMath.maxHit(in);
 	}
 
 	private static CombatInput twistedBow(AttackStance stance)

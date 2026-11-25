@@ -225,4 +225,204 @@ final class CombatInput
 		copy.weaknessPercent = weaknessPercent;
 		return copy;
 	}
+
+	/**
+	 * Gear, prayers, and boosted levels. NPC defence is compared separately so a
+	 * failed NPC read cannot move the overlay on its own.
+	 */
+	static boolean offenceChanged(CombatInput previous, CombatInput next)
+	{
+		if (previous == null || next == null)
+		{
+			return true;
+		}
+		return previous.attackLevel != next.attackLevel
+			|| previous.strengthLevel != next.strengthLevel
+			|| previous.rangedLevel != next.rangedLevel
+			|| previous.magicLevel != next.magicLevel
+			|| previous.stabBonus != next.stabBonus
+			|| previous.slashBonus != next.slashBonus
+			|| previous.crushBonus != next.crushBonus
+			|| previous.magicBonus != next.magicBonus
+			|| previous.rangedBonus != next.rangedBonus
+			|| previous.strengthBonus != next.strengthBonus
+			|| previous.rangedStrengthBonus != next.rangedStrengthBonus
+			|| previous.magicDamagePermille != next.magicDamagePermille
+			|| previous.combatStyle != next.combatStyle
+			|| previous.stance != next.stance
+			|| previous.meleeStyle != next.meleeStyle
+			|| previous.rangedStyle != next.rangedStyle
+			|| previous.weaponSpeed != next.weaponSpeed
+			|| !sameText(previous.weaponName, next.weaponName)
+			|| !sameText(previous.spellName, next.spellName)
+			|| previous.spellMaxHit != next.spellMaxHit
+			|| !sameText(previous.spellElement, next.spellElement)
+			|| !sameText(previous.spellbook, next.spellbook)
+			|| previous.voidMelee != next.voidMelee
+			|| previous.voidRanged != next.voidRanged
+			|| previous.voidRangedElite != next.voidRangedElite
+			|| previous.voidMagic != next.voidMagic
+			|| previous.voidMagicElite != next.voidMagicElite
+			|| previous.salve != next.salve
+			|| previous.salveEnchanted != next.salveEnchanted
+			|| previous.salveImbued != next.salveImbued
+			|| previous.salveEnchantedImbued != next.salveEnchantedImbued
+			|| previous.blackMask != next.blackMask
+			|| previous.blackMaskImbued != next.blackMaskImbued
+			|| previous.onSlayerTask != next.onSlayerTask
+			|| previous.avarice != next.avarice
+			|| previous.tomeFire != next.tomeFire
+			|| previous.tomeWater != next.tomeWater
+			|| previous.tomeEarth != next.tomeEarth
+			|| previous.harmonisedStaff != next.harmonisedStaff
+			|| previous.twinflameStaff != next.twinflameStaff
+			|| previous.shadow != next.shadow
+			|| previous.twistedBow != next.twistedBow
+			|| previous.fang != next.fang
+			|| previous.crystalBow != next.crystalBow
+			|| previous.crystalPieces != next.crystalPieces
+			|| previous.arclight != next.arclight
+			|| previous.emberlight != next.emberlight
+			|| previous.darklight != next.darklight
+			|| previous.dragonHunterLance != next.dragonHunterLance
+			|| previous.dragonHunterCrossbow != next.dragonHunterCrossbow
+			|| previous.dragonHunterWand != next.dragonHunterWand
+			|| previous.chaosGauntlets != next.chaosGauntlets
+			|| previous.virtusPieces != next.virtusPieces
+			|| previous.poweredStaff != next.poweredStaff
+			|| previous.uncharged != next.uncharged
+			|| previous.meleeAttackPrayer != next.meleeAttackPrayer
+			|| previous.meleeStrengthPrayer != next.meleeStrengthPrayer
+			|| previous.rangedAttackPrayer != next.rangedAttackPrayer
+			|| previous.rangedStrengthPrayer != next.rangedStrengthPrayer
+			|| previous.magicAttackPrayer != next.magicAttackPrayer
+			|| previous.magicDamagePrayerPermille != next.magicDamagePrayerPermille;
+	}
+
+	static boolean monsterChanged(CombatInput previous, CombatInput next)
+	{
+		if (previous == null || next == null)
+		{
+			return true;
+		}
+		return previous.npcDefence != next.npcDefence
+			|| previous.npcMagic != next.npcMagic
+			|| previous.npcOffensiveMagic != next.npcOffensiveMagic
+			|| previous.npcStab != next.npcStab
+			|| previous.npcSlash != next.npcSlash
+			|| previous.npcCrush != next.npcCrush
+			|| previous.npcMagicDefence != next.npcMagicDefence
+			|| previous.npcLight != next.npcLight
+			|| previous.npcStandard != next.npcStandard
+			|| previous.npcHeavy != next.npcHeavy
+			|| previous.npcFlatArmour != next.npcFlatArmour
+			|| previous.undead != next.undead
+			|| previous.demon != next.demon
+			|| previous.dragon != next.dragon
+			|| previous.revenant != next.revenant
+			|| previous.xerician != next.xerician
+			|| previous.toa != next.toa
+			|| previous.magicUsesDefenceLevel != next.magicUsesDefenceLevel
+			|| !sameText(previous.weaknessElement, next.weaknessElement)
+			|| previous.weaknessPercent != next.weaknessPercent;
+	}
+
+	/**
+	 * The equipment container is sometimes missing for a tick. A missing read must
+	 * not wipe the bonuses the overlay is already showing.
+	 */
+	static void keepGearIfUnread(CombatInput previous, CombatInput next)
+	{
+		if (previous == null || next == null)
+		{
+			return;
+		}
+		next.stabBonus = previous.stabBonus;
+		next.slashBonus = previous.slashBonus;
+		next.crushBonus = previous.crushBonus;
+		next.magicBonus = previous.magicBonus;
+		next.rangedBonus = previous.rangedBonus;
+		next.strengthBonus = previous.strengthBonus;
+		next.rangedStrengthBonus = previous.rangedStrengthBonus;
+		next.magicDamagePermille = previous.magicDamagePermille;
+		next.weaponSpeed = previous.weaponSpeed;
+		next.weaponName = previous.weaponName;
+		next.spellName = previous.spellName;
+		next.spellMaxHit = previous.spellMaxHit;
+		next.spellElement = previous.spellElement;
+		next.spellbook = previous.spellbook;
+		next.voidMelee = previous.voidMelee;
+		next.voidRanged = previous.voidRanged;
+		next.voidRangedElite = previous.voidRangedElite;
+		next.voidMagic = previous.voidMagic;
+		next.voidMagicElite = previous.voidMagicElite;
+		next.salve = previous.salve;
+		next.salveEnchanted = previous.salveEnchanted;
+		next.salveImbued = previous.salveImbued;
+		next.salveEnchantedImbued = previous.salveEnchantedImbued;
+		next.blackMask = previous.blackMask;
+		next.blackMaskImbued = previous.blackMaskImbued;
+		next.avarice = previous.avarice;
+		next.tomeFire = previous.tomeFire;
+		next.tomeWater = previous.tomeWater;
+		next.tomeEarth = previous.tomeEarth;
+		next.harmonisedStaff = previous.harmonisedStaff;
+		next.twinflameStaff = previous.twinflameStaff;
+		next.shadow = previous.shadow;
+		next.twistedBow = previous.twistedBow;
+		next.fang = previous.fang;
+		next.crystalBow = previous.crystalBow;
+		next.crystalPieces = previous.crystalPieces;
+		next.arclight = previous.arclight;
+		next.emberlight = previous.emberlight;
+		next.darklight = previous.darklight;
+		next.dragonHunterLance = previous.dragonHunterLance;
+		next.dragonHunterCrossbow = previous.dragonHunterCrossbow;
+		next.dragonHunterWand = previous.dragonHunterWand;
+		next.chaosGauntlets = previous.chaosGauntlets;
+		next.virtusPieces = previous.virtusPieces;
+		next.poweredStaff = previous.poweredStaff;
+		next.uncharged = previous.uncharged;
+		next.combatStyle = previous.combatStyle;
+		next.stance = previous.stance;
+		next.meleeStyle = previous.meleeStyle;
+		next.rangedStyle = previous.rangedStyle;
+	}
+
+	/**
+	 * Autocast varbit reads come back empty on some ticks. Keep the spell that
+	 * was already casting instead of dropping the max hit to 0.
+	 */
+	static void keepSpellIfUnread(CombatInput previous, CombatInput next)
+	{
+		if (previous == null || next == null)
+		{
+			return;
+		}
+		if (next.combatStyle != CombatStyle.MAGIC || next.poweredStaff)
+		{
+			return;
+		}
+		if (next.spellName != null && !next.spellName.isEmpty())
+		{
+			return;
+		}
+		if (previous.combatStyle != CombatStyle.MAGIC || previous.spellName == null || previous.spellName.isEmpty())
+		{
+			return;
+		}
+		next.spellName = previous.spellName;
+		next.spellMaxHit = previous.spellMaxHit;
+		next.spellElement = previous.spellElement;
+		next.spellbook = previous.spellbook;
+	}
+
+	private static boolean sameText(String left, String right)
+	{
+		if (left == null || left.isEmpty())
+		{
+			return right == null || right.isEmpty();
+		}
+		return left.equals(right);
+	}
 }

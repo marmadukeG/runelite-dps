@@ -287,7 +287,7 @@ final class CombatMath
 			}
 			else
 			{
-				base = Math.max(0, in.spellMaxHit);
+				base = SpellTable.scaledBaseHit(in.spellName, in.spellMaxHit, in.magicLevel);
 			}
 			if (in.chaosGauntlets && in.spellName != null && in.spellName.toLowerCase().contains("bolt"))
 			{
